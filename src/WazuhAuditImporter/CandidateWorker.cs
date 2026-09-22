@@ -99,6 +99,16 @@ public static class CandidateWorker
             var snapshotPath = VersionedSnapshotStore.Save(stateDirectory, claim, current);
             Console.WriteLine($"Snapshot prepared    : {snapshotPath}");
 
+            // Step 8: persist a dry-run Solr plan before completing the worker version.
+            // This does not connect to Solr and intentionally uses candidate-level
+            // reindex planning until the real Solr schema/document identity is supplied.
+            var solrPlan = SolrPlanBuilder.Build(claim, result);
+            var solrWrite = SolrPlanRepository.EnsurePlan(connection, solrPlan);
+            Console.WriteLine($"SOLR PLAN mutation_id={solrWrite.MutationId} operation={solrWrite.Operation} " +
+                              $"status={solrWrite.Status} inserted={solrWrite.Inserted} " +
+                              $"add={solrWrite.AddedCount} remove={solrWrite.RemovedCount} change={solrWrite.ChangedCount}");
+            Console.WriteLine("SOLR DRY-RUN ONLY: no Solr endpoint/schema is configured and no Solr writes are performed.");
+
             var completion = WorkerRepository.Complete(connection, claim);
             Console.WriteLine($"COMPLETE status={completion.Status} event_version={completion.EventVersion} " +
                               $"completed_version={completion.CompletedVersion}");

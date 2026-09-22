@@ -138,11 +138,12 @@ public static class Cli
                     SELECT
                         (SELECT COUNT(*) FROM wazuh_audit_poc.audit_event),
                         (SELECT COUNT(*) FROM wazuh_audit_poc.candidate_work_queue),
-                        (SELECT COUNT(*) FROM wazuh_audit_poc.collector_checkpoint);
+                        (SELECT COUNT(*) FROM wazuh_audit_poc.collector_checkpoint),
+                        (SELECT COUNT(*) FROM wazuh_audit_poc.solr_mutation_queue);
                     """, connection);
                 using var reader = counts.ExecuteReader();
                 reader.Read();
-                Console.WriteLine($"Rows: audit_event={reader.GetValue(0)}; candidate_work_queue={reader.GetValue(1)}; collector_checkpoint={reader.GetValue(2)}");
+                Console.WriteLine($"Rows: audit_event={reader.GetValue(0)}; candidate_work_queue={reader.GetValue(1)}; collector_checkpoint={reader.GetValue(2)}; solr_mutation_queue={reader.GetValue(3)}");
                 Console.WriteLine("Database check completed. No application rows changed.");
                 return 0;
             }
@@ -268,6 +269,7 @@ public static class Cli
         Collector default Indexer URL: https://127.0.0.1:19200 (local SSH tunnel only).
         Default DB: 127.0.0.1:3306 / wazuh_audit_poc, expected host MGMTNB08.
         Default scope: FLOSVR01 / 001 / candidate 1180097 only.
-        Worker commands process only the explicit pilot queue/root and never write to Solr.
+        Worker commands process only the explicit pilot queue/root. Step 8 persists a dry-run
+        candidate-level Solr plan in MariaDB, but never connects to or writes to Solr.
         """);
 }

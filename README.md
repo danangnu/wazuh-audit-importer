@@ -393,3 +393,55 @@ See `docs/STEP7_ACCEPTANCE.md` and `sql/007_verify_continuous_worker.sql`.
 ## Step 7.2 hotfix
 
 Initializes ClaimNext local variables explicitly so the compiler can prove they are assigned after the no-row return path. This preserves the Step 7.1 reader-disposal fix.
+
+# Step 8 — Solr dry-run mutation planning
+
+Step 8 adds **planning only**. It does not contain a Solr client, Solr URL,
+collection name, unique-key field, candidate field, or any Solr write code.
+
+The real Solr document model has not yet been supplied. Therefore the worker
+must not guess whether one physical file maps to one Solr document or whether a
+candidate is represented by one combined Solr document. Any real inventory delta
+is represented conservatively as one candidate-level `reindex_candidate` plan.
+
+## Database migration (required before running Step 8 commands)
+
+Execute this once in the existing `wazuh_audit_poc` database:
+
+```text
+sql/008_create_solr_mutation_queue.sql
+```
+
+It creates only `solr_mutation_queue`; it does not alter or delete existing
+`audit_event`, `candidate_work_queue`, or `collector_checkpoint` rows.
+
+After migration, `check-db`, `collect`, `work-once`, and `work` require the new
+table because the schema guard validates it.
+
+## Worker behavior
+
+After a candidate snapshot is prepared, but before its claimed queue version is
+completed, the worker idempotently records one plan for that worker version:
+
+- baseline or no inventory delta -> `operation=none`, `status=not_required`
+- any ADD / REMOVE / CHANGE -> `operation=reindex_candidate`, `status=planned`
+
+Example output:
+
+```text
+SOLR PLAN mutation_id=1 operation=reindex_candidate status=planned inserted=True add=1 remove=0 change=0
+SOLR DRY-RUN ONLY: no Solr endpoint/schema is configured and no Solr writes are performed.
+```
+
+The unique key `(source_instance, agent_id, candidate_id, worker_version)` makes
+worker retries idempotent. The immutable plan content also has a SHA-256
+idempotency key. If the same worker version is retried with different plan
+content, processing stops as a conflict rather than silently replacing history.
+
+`status=planned` is intentionally not the same thing as "executed in Solr".
+A later executor can move a plan through `processing` to `applied`, populate
+`applied_at_utc`, increment `attempt_count`, and record `last_error` on failure.
+That executor is **not included in Step 8**.
+
+Use `sql/009_verify_solr_plans.sql` for read-only verification. See
+`docs/STEP8_ACCEPTANCE.md` for the acceptance sequence.

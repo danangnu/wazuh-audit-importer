@@ -140,6 +140,64 @@ cases.Add(("worker candidate mismatch rejected", () =>
     throw new Exception("Expected candidate mismatch rejection.");
 }));
 
+
+cases.Add(("Solr planner baseline is not required", () =>
+{
+    var claim = new WorkerClaim(1, "wazuh-lab-pilot-01", "001", "1180097",
+        @"C:\Shares-DFS\FastTrack\Candidate\To 1189999\1180097",
+        18, 18, 17, 1, Guid.NewGuid().ToString("D"), DateTime.UtcNow.AddMinutes(2));
+    var result = new ReconciliationResult("1180097", true, [], [], []);
+    var plan = SolrPlanBuilder.Build(claim, result);
+    Assert(plan.Operation == "none" && plan.Status == "not_required");
+    Assert(plan.AddedCount == 0 && plan.RemovedCount == 0 && plan.ChangedCount == 0);
+}));
+
+cases.Add(("Solr planner no-change pass is not required", () =>
+{
+    var claim = new WorkerClaim(1, "wazuh-lab-pilot-01", "001", "1180097",
+        @"C:\Shares-DFS\FastTrack\Candidate\To 1189999\1180097",
+        18, 18, 17, 1, Guid.NewGuid().ToString("D"), DateTime.UtcNow.AddMinutes(2));
+    var result = new ReconciliationResult("1180097", false, [], [], []);
+    var plan = SolrPlanBuilder.Build(claim, result);
+    Assert(plan.Operation == "none" && plan.Status == "not_required");
+}));
+
+cases.Add(("Solr planner candidate delta becomes reindex plan", () =>
+{
+    var claim = new WorkerClaim(1, "wazuh-lab-pilot-01", "001", "1180097",
+        @"C:\Shares-DFS\FastTrack\Candidate\To 1189999\1180097",
+        18, 18, 17, 1, Guid.NewGuid().ToString("D"), DateTime.UtcNow.AddMinutes(2));
+    var result = new ReconciliationResult("1180097", false,
+        ["added.txt"], ["removed.txt"], ["changed.txt"]);
+    var plan = SolrPlanBuilder.Build(claim, result);
+    Assert(plan.Operation == "reindex_candidate" && plan.Status == "planned");
+    Assert(plan.AddedCount == 1 && plan.RemovedCount == 1 && plan.ChangedCount == 1);
+    Assert(plan.PlanJson.Contains("\"execution_supported\":false", StringComparison.Ordinal));
+    Assert(plan.PlanJson.Contains("\"collection\":null", StringComparison.Ordinal));
+}));
+
+cases.Add(("Solr planner is deterministic for the same worker version", () =>
+{
+    var claim = new WorkerClaim(1, "wazuh-lab-pilot-01", "001", "1180097",
+        @"C:\Shares-DFS\FastTrack\Candidate\To 1189999\1180097",
+        18, 18, 17, 1, "00000000-0000-0000-0000-000000000001", DateTime.UtcNow.AddMinutes(2));
+    var result = new ReconciliationResult("1180097", false, ["a.txt"], [], []);
+    var a = SolrPlanBuilder.Build(claim, result);
+    var b = SolrPlanBuilder.Build(claim, result);
+    Assert(a.PlanJson == b.PlanJson);
+    Assert(a.IdempotencyKey == b.IdempotencyKey && a.IdempotencyKey.Length == 64);
+}));
+
+cases.Add(("Solr planner candidate mismatch rejected", () =>
+{
+    var claim = new WorkerClaim(1, "wazuh-lab-pilot-01", "001", "1180097",
+        @"C:\Shares-DFS\FastTrack\Candidate\To 1189999\1180097",
+        18, 18, 17, 1, Guid.NewGuid().ToString("D"), DateTime.UtcNow.AddMinutes(2));
+    try { SolrPlanBuilder.Build(claim, new ReconciliationResult("1180098", false, [], [], [])); }
+    catch (InvalidOperationException) { return; }
+    throw new Exception("Expected Solr planner candidate mismatch rejection.");
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -147,5 +205,5 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff tests only. No MariaDB connection or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;

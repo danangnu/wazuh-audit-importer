@@ -58,6 +58,25 @@ public static class SchemaContract
             new("cursor_text", "longtext", null, true, null, null, false),
             new("last_wazuh_event_id", "varchar", 64, true, "ascii_bin", null, false),
             new("updated_at_utc", "datetime", null, false, null, null, false)
+        ],
+        ["solr_mutation_queue"] = [
+            new("mutation_id", "bigint", null, false, null, null, true),
+            new("source_instance", "varchar", 64, false, "ascii_bin", null, false),
+            new("agent_id", "varchar", 32, false, "ascii_bin", null, false),
+            new("candidate_id", "varchar", 32, false, "ascii_bin", null, false),
+            new("worker_version", "bigint", null, false, null, null, false),
+            new("operation", "enum", null, false, null, "enum('reindex_candidate','none')", false),
+            new("status", "enum", null, false, null, "enum('planned','not_required','processing','applied','failed','skipped')", false),
+            new("added_count", "int", null, false, null, null, false),
+            new("removed_count", "int", null, false, null, null, false),
+            new("changed_count", "int", null, false, null, null, false),
+            new("plan_json", "longtext", null, false, null, null, false),
+            new("idempotency_key", "char", 64, false, "ascii_bin", null, false),
+            new("attempt_count", "int", null, false, null, null, false),
+            new("planned_at_utc", "datetime", null, false, null, null, false),
+            new("updated_at_utc", "datetime", null, false, null, null, false),
+            new("applied_at_utc", "datetime", null, true, null, null, false),
+            new("last_error", "text", null, true, null, null, false)
         ]
     };
 
@@ -124,6 +143,10 @@ public static class SchemaContract
         VerifyUnique(connection, "audit_event", "uq_audit_source_event", ["source_instance", "wazuh_event_id"]);
         VerifyUnique(connection, "candidate_work_queue", "uq_queue_source_agent_candidate",
             ["source_instance", "agent_id", "candidate_id"]);
+        VerifyUnique(connection, "solr_mutation_queue", "uq_solr_plan_version",
+            ["source_instance", "agent_id", "candidate_id", "worker_version"]);
+        VerifyUnique(connection, "solr_mutation_queue", "uq_solr_plan_idempotency",
+            ["idempotency_key"]);
         Console.WriteLine("Schema guard: required columns, InnoDB engines and deduplication indexes matched.");
     }
 
