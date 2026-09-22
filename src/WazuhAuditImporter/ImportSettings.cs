@@ -27,6 +27,8 @@ public sealed class ImportSettings
     public int IndexerPageSize { get; set; } = 200;
     public int IndexerMaxPages { get; set; } = 20;
     public string CollectorStreamKey { get; set; } = "flosvr01-fim-pilot";
+    public int CollectorPollSeconds { get; set; } = 10;
+    public int CollectorRetrySeconds { get; set; } = 15;
 
     public static ImportSettings Load(string? path)
     {
@@ -73,7 +75,8 @@ public sealed class ImportSettings
         if (IndexerIndexPattern != "wazuh-alerts-4.x-*")
             throw new FormatException("Unexpected IndexerIndexPattern for this pilot.");
         if (IndexerTimeoutSeconds is < 5 or > 300 || IndexerInitialLookbackMinutes is < 1 or > 10080 ||
-            IndexerOverlapSeconds is < 0 or > 3600 || IndexerPageSize is < 1 or > 500 || IndexerMaxPages is < 1 or > 100)
+            IndexerOverlapSeconds is < 0 or > 3600 || IndexerPageSize is < 1 or > 500 || IndexerMaxPages is < 1 or > 100 ||
+            CollectorPollSeconds is < 5 or > 300 || CollectorRetrySeconds is < 5 or > 300)
             throw new FormatException("Collector numeric settings are outside pilot limits.");
         if (!Regex.IsMatch(CollectorStreamKey ?? string.Empty, @"\A[A-Za-z0-9][A-Za-z0-9._-]{0,63}\z"))
             throw new FormatException("CollectorStreamKey is invalid.");

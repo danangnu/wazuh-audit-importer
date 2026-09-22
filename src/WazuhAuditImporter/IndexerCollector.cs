@@ -14,7 +14,8 @@ public static class IndexerCollector
         ImportSettings settings,
         MySqlConnection connection,
         string indexerUser,
-        string indexerPassword)
+        string indexerPassword,
+        bool printDuplicateEvents = true)
     {
         settings.ValidateCollector();
         var checkpoint = CheckpointRepository.Read(connection, settings);
@@ -60,8 +61,13 @@ public static class IndexerCollector
             using var response = client.Send(request);
             var responseText = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
             if (!response.IsSuccessStatusCode)
-                throw new InvalidOperationException(
-                    $"Indexer query failed: HTTP {(int)response.StatusCode}. Stop; do not advance the checkpoint.");
+            {
+                if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+                    throw new InvalidOperationException(
+                        $"Indexer authentication/authorization failed: HTTP {(int)response.StatusCode}. Check the account; do not advance the checkpoint.");
+                throw new HttpRequestException(
+                    $"Indexer query failed: HTTP {(int)response.StatusCode}. Checkpoint was not advanced.");
+            }
 
             using var doc = JsonDocument.Parse(responseText);
             if (!doc.RootElement.TryGetProperty("hits", out var hitsObject) ||
@@ -86,7 +92,8 @@ public static class IndexerCollector
                 var result = AuditRepository.Import(connection, parsed.Alert, settings);
                 if (result.Inserted) inserted++; else duplicates++;
                 lastAcceptedEventId = parsed.Alert.WazuhEventId;
-                Console.WriteLine($"  {(result.Inserted ? "NEW" : "DUP")} event={parsed.Alert.WazuhEventId} candidate={parsed.Alert.CandidateId} type={parsed.Alert.EventType} version={result.Queue.EventVersion}");
+                if (result.Inserted || printDuplicateEvents)
+                    Console.WriteLine($"  {(result.Inserted ? "NEW" : "DUP")} event={parsed.Alert.WazuhEventId} candidate={parsed.Alert.CandidateId} type={parsed.Alert.EventType} version={result.Queue.EventVersion}");
             }
 
             if (count < settings.IndexerPageSize)

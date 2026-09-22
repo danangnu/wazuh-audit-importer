@@ -87,6 +87,9 @@ cases.Add(("collector local SSH tunnel accepted", () => new ImportSettings().Val
 cases.Add(("collector remote indexer rejected", () => Reject(() => new ImportSettings { IndexerBaseUrl = "https://172.30.90.252:9200" }.ValidateCollector())));
 cases.Add(("collector non-HTTPS rejected", () => Reject(() => new ImportSettings { IndexerBaseUrl = "http://127.0.0.1:19200" }.ValidateCollector())));
 cases.Add(("collector page size bounded", () => Reject(() => new ImportSettings { IndexerPageSize = 1000 }.ValidateCollector())));
+cases.Add(("continuous collector defaults accepted", () => new ImportSettings().ValidateCollector()));
+cases.Add(("continuous collector poll interval bounded", () => Reject(() => new ImportSettings { CollectorPollSeconds = 1 }.ValidateCollector())));
+cases.Add(("continuous collector retry interval bounded", () => Reject(() => new ImportSettings { CollectorRetrySeconds = 1 }.ValidateCollector())));
 
 var failed = 0;
 foreach (var (name, run) in cases)

@@ -8,7 +8,9 @@
   "AgentId": "001",
   "AgentName": "FLOSVR01",
   "CandidateRoot": "C:\\Shares-DFS\\FastTrack\\Candidate\\To 1189999",
-  "CandidateIds": ["1180097"],
+  "CandidateIds": [
+    "1180097"
+  ],
   "IndexerBaseUrl": "https://127.0.0.1:19200",
   "IndexerIndexPattern": "wazuh-alerts-4.x-*",
   "IndexerAllowUntrustedCertificate": true,
@@ -17,5 +19,7 @@
   "IndexerOverlapSeconds": 600,
   "IndexerPageSize": 200,
   "IndexerMaxPages": 20,
-  "CollectorStreamKey": "flosvr01-fim-pilot"
+  "CollectorStreamKey": "flosvr01-fim-pilot",
+  "CollectorPollSeconds": 10,
+  "CollectorRetrySeconds": 15
 }

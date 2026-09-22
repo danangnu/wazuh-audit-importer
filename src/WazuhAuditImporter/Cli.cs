@@ -14,8 +14,8 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once"))
-                throw new FormatException("Command must be import, check-db, collect-once or help.");
+            if (command is not ("import" or "check-db" or "collect-once" or "collect"))
+                throw new FormatException("Command must be import, check-db, collect-once, collect or help.");
             string? file = null, config = null, username = null, indexerUser = null;
             var apply = false;
             var i = 1;
@@ -83,6 +83,23 @@ public static class Cli
             }
             if (string.IsNullOrWhiteSpace(username)) throw new FormatException("A database username is required.");
             var password = Environment.GetEnvironmentVariable("WAZUH_DB_PASSWORD") ?? ReadPassword("MariaDB password (not saved): ");
+
+            if (command == "collect")
+            {
+                indexerUser ??= "admin";
+                var indexerPassword = Environment.GetEnvironmentVariable("WAZUH_INDEXER_PASSWORD") ??
+                    ReadPassword($"Wazuh Indexer password for {indexerUser} (not saved): ");
+                try
+                {
+                    return ContinuousCollector.Run(settings, username, password, indexerUser, indexerPassword);
+                }
+                finally
+                {
+                    password = string.Empty;
+                    indexerPassword = string.Empty;
+                }
+            }
+
             using var connection = AuditRepository.Open(settings, username, password);
             password = string.Empty;
 
@@ -199,8 +216,10 @@ public static class Cli
           import <event.json>                       Preview only; no DB connection.
           import <event.json> --apply               Save one alert and queue its candidate.
           check-db                                  Check schema/identity/counts; no row writes.
-          collect-once                              Read scoped FIM alerts through local SSH tunnel,
-                                                    import/deduplicate them, then advance checkpoint.
+          collect-once                              Read one scoped FIM window through local SSH tunnel,
+                                                    import/deduplicate it, then advance checkpoint.
+          collect                                   Continuously poll scoped FIM alerts, retry transient
+                                                    failures, and stop cleanly with Ctrl+C.
 
         Optional: --config <path.json>  --db-user <username>  --indexer-user <username>
         DB password: WAZUH_DB_PASSWORD or interactive prompt.

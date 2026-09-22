@@ -219,3 +219,75 @@ Run `sql/003_verify_collector.sql` afterward. A second `collect-once` with no ne
 file activity should add no new audit rows and should not increment
 `candidate_work_queue.event_version`; its overlap window may legitimately replay
 already stored events as duplicates.
+
+
+# Step 5 — continuous collector pilot
+
+This revision adds the `collect` command. It repeatedly executes the same bounded,
+checkpointed Indexer collection used by `collect-once`.
+
+It remains intentionally limited to the configured FLOSVR01 / agent 001 / candidate
+1180097 scope. It does not run the candidate worker and does not write to Solr.
+
+Prerequisites:
+
+1. Wazuh Agent/Manager/Indexer are running.
+2. Keep the local SSH tunnel open, using the current Wazuh VM address:
+
+```powershell
+ssh -L 19200:127.0.0.1:9200 danang@<CURRENT_WAZUH_VM_IP>
+```
+
+3. Build/test the solution. If ordinary NuGet restore conflicts on this laptop,
+   use `Restore-And-Preview.cmd` as previously validated.
+
+Start continuous collection in a second PowerShell window:
+
+```powershell
+dotnet .\src\WazuhAuditImporter\bin\Debug\net9.0\WazuhAuditImporter.dll collect
+```
+
+or:
+
+```powershell
+.\Collect.cmd
+```
+
+The default successful poll interval is 10 seconds. Transient Indexer/SSH or
+MariaDB connection failures wait 15 seconds and retry. A failed collection does
+not advance the checkpoint. The next successful overlapping query deliberately
+replays recent events; the unique event identity and normalized duplicate checks
+prevent queue-version inflation.
+
+Press Ctrl+C once for clean shutdown. The process finishes the current bounded
+operation and then exits. Authentication/authorization errors, schema conflicts,
+malformed Indexer data, and normalized event conflicts remain fatal rather than
+being retried indefinitely.
+
+Passwords are prompted once at startup and retained only in process memory for
+the running collector. Environment variables remain available for controlled
+automation, but secrets must not be committed to Git or configuration files.
+
+New optional non-secret settings in `importer.example.json`:
+
+- `CollectorPollSeconds` (default 10; pilot range 5-300)
+- `CollectorRetrySeconds` (default 15; pilot range 5-300)
+
+## Step 5 acceptance test
+
+With `collect` running, create, modify, then delete one new test file inside the
+approved candidate 1180097 folder. Each genuine event should print a `NEW` line
+and increment the single queue row's event_version. Duplicate overlap events are
+processed but suppressed from per-event console output; the cycle summary reports
+the duplicate count.
+
+Then test restart recovery:
+
+1. Stop the collector with Ctrl+C.
+2. Make one test-file change while it is stopped.
+3. Start `collect` again.
+4. Confirm the offline-period event is imported through the overlap/checkpoint
+   query and the checkpoint advances only after success.
+
+Do not broaden CandidateIds, run a candidate worker, or enable Solr writes as part
+of Step 5.
