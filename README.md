@@ -1,3 +1,37 @@
+# Step 6 — candidate reconciliation worker pilot
+
+Step 6 adds `worker-preflight` and `work-once`. It consumes the existing
+`candidate_work_queue` but still performs **no Solr writes**.
+
+The worker deliberately requires an explicit `--worker-root` because queue paths
+such as `C:\Shares-DFS\...` are local paths on FLOSVR01 and must not be assumed to
+exist on MGMTNB08. Use the actual SMB/UNC mapping approved for the file server.
+Do not use a local test mirror to complete the real FLOSVR01 queue row.
+
+The first successful `work-once` establishes a versioned baseline snapshot and
+does not claim that all pre-existing files are ADD operations. Later passes compare
+file **metadata only** (relative path, byte length, last-write UTC) and report
+ADD / REMOVE / CHANGE. Reparse points are skipped and inaccessible files/folders
+cause retry rather than being treated as missing.
+
+Queue claims use the existing lease/version columns. Completion is compare-and-set
+against the lease token. If `event_version` increases while a claim is processing,
+only the claimed version is marked completed and the row remains `pending` for a
+follow-up pass. Failed source access moves the owned claim to `retry` with a delay
+and records `last_error`.
+
+Worker snapshots are stored outside MariaDB as immutable/versioned local state:
+
+`<state-dir>\<source>\<agent>\<candidate>\snapshot-v<version>.json`
+
+A snapshot is written before queue completion. If DB completion fails, that file
+is an orphan and is ignored because `completed_version` did not advance. A missing
+snapshot for a nonzero completed version is a hard error; it is never interpreted
+as an empty candidate.
+
+No database migration is required for Step 6. See `docs/STEP6_ACCEPTANCE.md` before
+claiming the current pending row.
+
 
 ## Step 4.1 duplicate replay correction
 
@@ -169,7 +203,7 @@ No claim of a successful database import or live pipeline is made by this ZIP.
 ## Files
 
 - src/WazuhAuditImporter — parser, CLI, schema guard and transactional repository.
-- tests/WazuhAuditImporter.SelfTests — 31 offline parser/scope test cases.
+- tests/WazuhAuditImporter.SelfTests — 46 offline parser/scope/worker-diff test cases.
 - samples/wazuh-delete-sample.json — supplied real event, reformatted only.
 - sql/002_verify_sample_import.sql — read-only verification queries.
 - docs/DATABASE_ACCEPTANCE.md — explicit database acceptance checks.
@@ -291,3 +325,22 @@ Then test restart recovery:
 
 Do not broaden CandidateIds, run a candidate worker, or enable Solr writes as part
 of Step 5.
+
+## Step 6.1 lease-token compatibility fix
+
+MariaDB stores `candidate_work_queue.lease_token` as `CHAR(36)`. Depending on
+MySqlConnector GUID handling, a UUID-shaped value can be materialized as a
+`System.Guid` rather than a `System.String`. Step 6.1 accepts either form and
+normalizes it to the canonical `D` GUID string before lease validation.
+
+This fixes the observed completion failure:
+
+```text
+System.InvalidCastException: Unable to cast object of type 'System.Guid' to type 'System.String'.
+```
+
+A failed Step 6 claim that already moved the queue row to `retry` does not
+need to be reset manually. After the configured retry delay, run `work-once`
+again. Any snapshot written before the failed completion is an orphan because
+`completed_version` did not advance; the retry safely replaces the snapshot
+for its newly claimed version before database completion.

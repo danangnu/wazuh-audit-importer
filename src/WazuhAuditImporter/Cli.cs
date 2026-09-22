@@ -14,9 +14,9 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once" or "collect"))
-                throw new FormatException("Command must be import, check-db, collect-once, collect or help.");
-            string? file = null, config = null, username = null, indexerUser = null;
+            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once"))
+                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once or help.");
+            string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null;
             var apply = false;
             var i = 1;
             if (command == "import")
@@ -35,19 +35,23 @@ public static class Cli
                     if (command != "import") throw new FormatException("--apply is only valid with import.");
                     apply = true;
                 }
-                else if (option is "--config" or "--db-user" or "--indexer-user")
+                else if (option is "--config" or "--db-user" or "--indexer-user" or "--worker-root" or "--state-dir")
                 {
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
                         throw new FormatException("Missing value for " + option);
                     if (option == "--config") config = args[i++];
                     else if (option == "--db-user") username = args[i++];
-                    else indexerUser = args[i++];
+                    else if (option == "--indexer-user") indexerUser = args[i++];
+                    else if (option == "--worker-root") workerRoot = args[i++];
+                    else stateDir = args[i++];
                 }
                 else throw new FormatException("Unknown option: " + option);
             }
             var settings = ImportSettings.Load(config);
             Console.WriteLine("Wazuh Audit Importer - pilot");
-            Console.WriteLine("No Solr writes. No source-document access.\n");
+            Console.WriteLine(command is "worker-preflight" or "work-once"
+                ? "Candidate worker may read file metadata only. No source-file changes. No Solr writes.\n"
+                : "No Solr writes. No source-document access.\n");
 
             NormalizedAlert? alert = null;
             if (command == "import")
@@ -73,6 +77,19 @@ public static class Cli
                     return 0;
                 }
             }
+
+
+            if (command == "worker-preflight")
+            {
+                if (string.IsNullOrWhiteSpace(workerRoot))
+                    throw new FormatException("worker-preflight requires --worker-root <accessible candidate root>.");
+                return CandidateWorker.Preflight(settings, workerRoot);
+            }
+
+            if (command == "work-once" && string.IsNullOrWhiteSpace(workerRoot))
+                throw new FormatException("work-once requires --worker-root <accessible candidate root>.");
+            if (command == "work-once" && string.IsNullOrWhiteSpace(stateDir))
+                throw new FormatException("work-once requires --state-dir <persistent local worker state directory>.");
 
             username ??= settings.DatabaseUser;
             if (string.IsNullOrWhiteSpace(username))
@@ -116,6 +133,11 @@ public static class Cli
                 Console.WriteLine($"Rows: audit_event={reader.GetValue(0)}; candidate_work_queue={reader.GetValue(1)}; collector_checkpoint={reader.GetValue(2)}");
                 Console.WriteLine("Database check completed. No application rows changed.");
                 return 0;
+            }
+
+            if (command == "work-once")
+            {
+                return CandidateWorker.RunOnce(settings, connection, workerRoot!, stateDir!);
             }
 
             if (command == "collect-once")
@@ -220,13 +242,18 @@ public static class Cli
                                                     import/deduplicate it, then advance checkpoint.
           collect                                   Continuously poll scoped FIM alerts, retry transient
                                                     failures, and stop cleanly with Ctrl+C.
+          worker-preflight --worker-root <root>      Verify metadata read access for the allowed candidate;
+                                                    no DB writes and no queue claim.
+          work-once --worker-root <root>             Claim one due candidate, reconcile file metadata against
+                    [--state-dir <dir>]              its last completed versioned snapshot, then complete/requeue.
 
         Optional: --config <path.json>  --db-user <username>  --indexer-user <username>
+                  --worker-root <fully-qualified local/UNC root>  --state-dir <local state directory>
         DB password: WAZUH_DB_PASSWORD or interactive prompt.
         Indexer password: WAZUH_INDEXER_PASSWORD or interactive prompt.
         Collector default Indexer URL: https://127.0.0.1:19200 (local SSH tunnel only).
         Default DB: 127.0.0.1:3306 / wazuh_audit_poc, expected host MGMTNB08.
         Default scope: FLOSVR01 / 001 / candidate 1180097 only.
-        This tool never processes queued work or writes to Solr.
+        Worker commands process only the explicit pilot queue/root and never write to Solr.
         """);
 }

@@ -91,6 +91,52 @@ cases.Add(("continuous collector defaults accepted", () => new ImportSettings().
 cases.Add(("continuous collector poll interval bounded", () => Reject(() => new ImportSettings { CollectorPollSeconds = 1 }.ValidateCollector())));
 cases.Add(("continuous collector retry interval bounded", () => Reject(() => new ImportSettings { CollectorRetrySeconds = 1 }.ValidateCollector())));
 
+
+cases.Add(("worker timing defaults accepted", () => new ImportSettings().Validate()));
+cases.Add(("worker lease interval bounded", () => Reject(() => new ImportSettings { WorkerLeaseSeconds = 5 }.Validate())));
+cases.Add(("worker retry interval bounded", () => Reject(() => new ImportSettings { WorkerRetrySeconds = 1 }.Validate())));
+cases.Add(("first worker comparison creates baseline only", () =>
+{
+    var current = new CandidateSnapshot("1180097", DateTime.UtcNow,
+        new Dictionary<string, SnapshotFileState>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["a.txt"] = new("a.txt", 1, new DateTime(2026, 9, 22, 1, 0, 0, DateTimeKind.Utc))
+        });
+    var diff = CandidateReconciler.Compare(null, current);
+    Assert(diff.IsBaseline && diff.Added.Count == 0 && diff.Removed.Count == 0 && diff.Changed.Count == 0);
+}));
+cases.Add(("worker comparison detects add remove change", () =>
+{
+    var t1 = new DateTime(2026, 9, 22, 1, 0, 0, DateTimeKind.Utc);
+    var t2 = t1.AddMinutes(1);
+    var before = new CandidateSnapshot("1180097", t1,
+        new Dictionary<string, SnapshotFileState>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["same.txt"] = new("same.txt", 10, t1),
+            ["changed.txt"] = new("changed.txt", 10, t1),
+            ["removed.txt"] = new("removed.txt", 1, t1)
+        });
+    var after = new CandidateSnapshot("1180097", t2,
+        new Dictionary<string, SnapshotFileState>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["same.txt"] = new("same.txt", 10, t1),
+            ["changed.txt"] = new("changed.txt", 11, t2),
+            ["added.txt"] = new("added.txt", 1, t2)
+        });
+    var diff = CandidateReconciler.Compare(before, after);
+    Assert(!diff.IsBaseline && diff.Added.SequenceEqual(["added.txt"], StringComparer.OrdinalIgnoreCase));
+    Assert(diff.Removed.SequenceEqual(["removed.txt"], StringComparer.OrdinalIgnoreCase));
+    Assert(diff.Changed.SequenceEqual(["changed.txt"], StringComparer.OrdinalIgnoreCase));
+}));
+cases.Add(("worker candidate mismatch rejected", () =>
+{
+    var a = new CandidateSnapshot("1180097", DateTime.UtcNow, new(StringComparer.OrdinalIgnoreCase));
+    var b = new CandidateSnapshot("1180098", DateTime.UtcNow, new(StringComparer.OrdinalIgnoreCase));
+    try { CandidateReconciler.Compare(a, b); }
+    catch (InvalidOperationException) { return; }
+    throw new Exception("Expected candidate mismatch rejection.");
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -98,5 +144,5 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope tests only. No MariaDB connection or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff tests only. No MariaDB connection or SQL was executed.");
 return failed == 0 ? 0 : 1;

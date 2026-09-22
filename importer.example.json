@@ -21,5 +21,7 @@
   "IndexerMaxPages": 20,
   "CollectorStreamKey": "flosvr01-fim-pilot",
   "CollectorPollSeconds": 10,
-  "CollectorRetrySeconds": 15
+  "CollectorRetrySeconds": 15,
+  "WorkerLeaseSeconds": 120,
+  "WorkerRetrySeconds": 30
 }

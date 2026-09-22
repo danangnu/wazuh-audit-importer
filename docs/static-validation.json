@@ -4,9 +4,12 @@
   "source_delimiter_check": "passed",
   "supplied_json_structure": "passed",
   "insert_columns_vs_supplied_schema": "passed",
-  "offline_selftests_included": 31,
+  "worker_queue_schema_usage": "reviewed_against_existing_candidate_work_queue_columns",
+  "worker_snapshot_design": "versioned_local_state_no_source_content",
+  "offline_selftests_included": 46,
   "dotnet_build": "not_run_no_sdk_available",
-  "dotnet_restore": "not_run_network_DNS_unavailable",
+  "dotnet_restore": "not_run_no_network_or_sdk",
   "offline_selftests_execution": "not_run",
-  "live_MariaDB_10_1_import": "not_run_no_connection_to_user_database"
+  "live_MariaDB_10_1_worker": "not_run_no_connection_to_user_database",
+  "solr_writes": "not_implemented"
 }
