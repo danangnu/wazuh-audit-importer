@@ -6,10 +6,12 @@
   "insert_columns_vs_supplied_schema": "passed",
   "worker_queue_schema_usage": "reviewed_against_existing_candidate_work_queue_columns",
   "worker_snapshot_design": "versioned_local_state_no_source_content",
-  "offline_selftests_included": 46,
+  "offline_selftests_included": 49,
   "dotnet_build": "not_run_no_sdk_available",
   "dotnet_restore": "not_run_no_network_or_sdk",
   "offline_selftests_execution": "not_run",
   "live_MariaDB_10_1_worker": "not_run_no_connection_to_user_database",
-  "solr_writes": "not_implemented"
+  "solr_writes": "not_implemented",
+  "continuous_worker_design": "polls_due_queue_clean_ctrl_c_retry_on_source_or_transient_db_errors",
+  "continuous_worker_runtime": "not_run_requires_MGMTNB08_MariaDB_and_FLOSVR01_SMB"
 }

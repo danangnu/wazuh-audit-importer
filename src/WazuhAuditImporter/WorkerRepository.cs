@@ -32,10 +32,15 @@ public static class WorkerRepository
                 FOR UPDATE;
                 """;
 
-            ulong workItemId;
-            string source, agentId, candidateId, candidateFolder;
-            ulong eventVersion, completedVersion;
-            uint attemptCount;
+            ulong workItemId = 0;
+            string source = string.Empty;
+            string agentId = string.Empty;
+            string candidateId = string.Empty;
+            string candidateFolder = string.Empty;
+            ulong eventVersion = 0;
+            ulong completedVersion = 0;
+            uint attemptCount = 0;
+            var found = false;
             using (var select = new MySqlCommand(sql, connection, tx))
             {
                 select.Parameters.AddWithValue("@source", settings.SourceInstance);
@@ -44,20 +49,28 @@ public static class WorkerRepository
                 for (var i = 0; i < settings.CandidateIds.Length; i++)
                     select.Parameters.AddWithValue("@candidate" + i, settings.CandidateIds[i]);
 
+                // IMPORTANT: always dispose the data reader before committing or
+                // issuing another command on this MySqlConnection. MySqlConnector
+                // intentionally rejects connection reuse while a reader is active.
                 using var reader = select.ExecuteReader();
-                if (!reader.Read())
+                if (reader.Read())
                 {
-                    tx.Commit();
-                    return null;
+                    found = true;
+                    workItemId = reader.GetUInt64(0);
+                    source = reader.GetString(1);
+                    agentId = reader.GetString(2);
+                    candidateId = reader.GetString(3);
+                    candidateFolder = reader.GetString(4);
+                    eventVersion = reader.GetUInt64(5);
+                    completedVersion = reader.GetUInt64(6);
+                    attemptCount = reader.GetUInt32(7);
                 }
-                workItemId = reader.GetUInt64(0);
-                source = reader.GetString(1);
-                agentId = reader.GetString(2);
-                candidateId = reader.GetString(3);
-                candidateFolder = reader.GetString(4);
-                eventVersion = reader.GetUInt64(5);
-                completedVersion = reader.GetUInt64(6);
-                attemptCount = reader.GetUInt32(7);
+            }
+
+            if (!found)
+            {
+                tx.Commit();
+                return null;
             }
 
             var expectedFolder = settings.CandidateRoot + "\\" + candidateId;

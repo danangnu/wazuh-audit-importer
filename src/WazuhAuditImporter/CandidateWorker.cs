@@ -2,6 +2,19 @@ using MySqlConnector;
 
 namespace WazuhAuditImporter;
 
+public enum WorkerRunKind
+{
+    NoWork,
+    Processed
+}
+
+public sealed record WorkerRunOutcome(
+    WorkerRunKind Kind,
+    string? CandidateId = null,
+    ulong? ClaimedVersion = null,
+    string? CompletionStatus = null,
+    ulong? CompletedVersion = null);
+
 public static class CandidateWorker
 {
     public static int Preflight(ImportSettings settings, string workerRoot)
@@ -26,13 +39,27 @@ public static class CandidateWorker
         string workerRoot,
         string stateDirectory)
     {
+        ProcessNext(settings, connection, workerRoot, stateDirectory, quietNoWork: false);
+        return 0;
+    }
+
+    public static WorkerRunOutcome ProcessNext(
+        ImportSettings settings,
+        MySqlConnection connection,
+        string workerRoot,
+        string stateDirectory,
+        bool quietNoWork)
+    {
         settings.ValidateWorker(workerRoot, stateDirectory);
         var claim = WorkerRepository.ClaimNext(connection, settings);
         if (claim is null)
         {
-            Console.WriteLine("No due candidate work items for the configured pilot scope.");
-            Console.WriteLine("No source folders were scanned. No Solr writes.");
-            return 0;
+            if (!quietNoWork)
+            {
+                Console.WriteLine("No due candidate work items for the configured pilot scope.");
+                Console.WriteLine("No source folders were scanned. No Solr writes.");
+            }
+            return new WorkerRunOutcome(WorkerRunKind.NoWork);
         }
 
         Console.WriteLine($"CLAIM work_item_id={claim.WorkItemId} candidate={claim.CandidateId} " +
@@ -79,7 +106,12 @@ public static class CandidateWorker
                 Console.WriteLine("A newer event arrived while this claim was processing; the candidate remains pending for another pass.");
 
             Console.WriteLine("No file contents were read. No source files were changed. No Solr writes.");
-            return 0;
+            return new WorkerRunOutcome(
+                WorkerRunKind.Processed,
+                claim.CandidateId,
+                claim.ClaimedVersion,
+                completion.Status,
+                completion.CompletedVersion);
         }
         catch (Exception ex)
         {

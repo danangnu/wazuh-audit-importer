@@ -31,3 +31,11 @@ On MGMTNB08, run `Build-And-Preview.cmd`. It stops on failed restore, build,
 self-tests or parsing and never connects to the database. After it succeeds,
 run `check-db`, then the explicit apply and duplicate-replay test documented
 in the README. Keep real passwords out of console captures and Git.
+
+## Step 7 additions
+
+The package adds the continuous `work` loop on top of the Step 6 lease/versioned
+snapshot worker. Offline self-tests include bounds for the continuous worker poll
+and loop-retry settings. Runtime acceptance still must be performed on MGMTNB08
+against the existing MariaDB queue and FLOSVR01 SMB root; this package has not
+been compiled or executed in the artifact-generation environment.

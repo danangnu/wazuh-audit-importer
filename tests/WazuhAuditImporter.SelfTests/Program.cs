@@ -95,6 +95,9 @@ cases.Add(("continuous collector retry interval bounded", () => Reject(() => new
 cases.Add(("worker timing defaults accepted", () => new ImportSettings().Validate()));
 cases.Add(("worker lease interval bounded", () => Reject(() => new ImportSettings { WorkerLeaseSeconds = 5 }.Validate())));
 cases.Add(("worker retry interval bounded", () => Reject(() => new ImportSettings { WorkerRetrySeconds = 1 }.Validate())));
+cases.Add(("continuous worker defaults accepted", () => new ImportSettings().Validate()));
+cases.Add(("continuous worker poll interval bounded", () => Reject(() => new ImportSettings { WorkerPollSeconds = 1 }.Validate())));
+cases.Add(("continuous worker loop retry bounded", () => Reject(() => new ImportSettings { WorkerLoopRetrySeconds = 1 }.Validate())));
 cases.Add(("first worker comparison creates baseline only", () =>
 {
     var current = new CandidateSnapshot("1180097", DateTime.UtcNow,

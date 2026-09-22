@@ -23,5 +23,7 @@
   "CollectorPollSeconds": 10,
   "CollectorRetrySeconds": 15,
   "WorkerLeaseSeconds": 120,
-  "WorkerRetrySeconds": 30
+  "WorkerRetrySeconds": 30,
+  "WorkerPollSeconds": 5,
+  "WorkerLoopRetrySeconds": 15
 }

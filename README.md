@@ -1,3 +1,7 @@
+# Step 7.2 hotfix
+
+Fixes the continuous worker no-work path: the queue SELECT data reader is now disposed before committing the transaction. This prevents MySqlConnector from raising `This MySqlConnection is already in use` when the worker polls an empty/due-free queue. No schema changes are required.
+
 # Step 6 — candidate reconciliation worker pilot
 
 Step 6 adds `worker-preflight` and `work-once`. It consumes the existing
@@ -344,3 +348,48 @@ need to be reset manually. After the configured retry delay, run `work-once`
 again. Any snapshot written before the failed completion is an orphan because
 `completed_version` did not advance; the retry safely replaces the snapshot
 for its newly claimed version before database completion.
+
+# Step 7 — continuous candidate worker
+
+This revision adds the `work` command. It uses the same worker lease/version/snapshot
+logic validated by `work-once`, but repeats automatically until Ctrl+C is pressed.
+
+Example on MGMTNB08:
+
+```powershell
+$root = "\\FLOSVR01\FastTrack\Candidate\To 1189999"
+$state = "C:\Users\dnurdiansyah\Documents\NewAllied\WazuhAuditImporter\worker-state"
+
+dotnet .\src\WazuhAuditImporter\bin\Debug\net9.0\WazuhAuditImporter.dll `
+    work `
+    --worker-root "$root" `
+    --state-dir "$state"
+```
+
+Or use:
+
+```powershell
+.\Work.cmd "\\FLOSVR01\FastTrack\Candidate\To 1189999" `
+    "C:\Users\dnurdiansyah\Documents\NewAllied\WazuhAuditImporter\worker-state"
+```
+
+Default timing:
+
+- Queue poll: 5 seconds.
+- Failed source item retry: 30 seconds (existing queue behavior).
+- Continuous-loop retry after transient DB/source failure: 15 seconds.
+- Worker lease: 120 seconds.
+
+The continuous worker does **not** read file contents, modify source files, or write to
+Solr. An inaccessible candidate folder is treated as a retryable error and is never
+interpreted as an empty folder.
+
+Keep the existing `worker-state` directory when upgrading from Step 6; completed
+versioned snapshots are the reconciliation baseline.
+
+See `docs/STEP7_ACCEPTANCE.md` and `sql/007_verify_continuous_worker.sql`.
+
+
+## Step 7.2 hotfix
+
+Initializes ClaimNext local variables explicitly so the compiler can prove they are assigned after the no-row return path. This preserves the Step 7.1 reader-disposal fix.

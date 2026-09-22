@@ -30,10 +30,12 @@ public sealed class ImportSettings
     public int CollectorPollSeconds { get; set; } = 10;
     public int CollectorRetrySeconds { get; set; } = 15;
 
-    // Step 6 candidate worker. The accessible root is supplied explicitly at runtime;
+    // Step 7 candidate worker. The accessible root is supplied explicitly at runtime;
     // these settings control claim/retry timing only.
     public int WorkerLeaseSeconds { get; set; } = 120;
     public int WorkerRetrySeconds { get; set; } = 30;
+    public int WorkerPollSeconds { get; set; } = 5;
+    public int WorkerLoopRetrySeconds { get; set; } = 15;
 
     public static ImportSettings Load(string? path)
     {
@@ -70,7 +72,10 @@ public sealed class ImportSettings
             CandidateIds.Any(id => id is null || !Regex.IsMatch(id, @"\A[0-9]{1,32}\z")))
             throw new FormatException("Set an explicit nonempty list of allowed CandidateIds.");
         ValidateCollector();
-        if (WorkerLeaseSeconds is < 30 or > 1800 || WorkerRetrySeconds is < 5 or > 3600)
+        if (WorkerLeaseSeconds is < 30 or > 1800 ||
+            WorkerRetrySeconds is < 5 or > 3600 ||
+            WorkerPollSeconds is < 2 or > 300 ||
+            WorkerLoopRetrySeconds is < 5 or > 300)
             throw new FormatException("Worker timing settings are outside pilot limits.");
     }
 
@@ -84,7 +89,7 @@ public sealed class ImportSettings
         if (!Path.IsPathFullyQualified(fullState))
             throw new FormatException("Worker state directory must resolve to a fully-qualified path.");
         if (CandidateIds.Length != 1 || CandidateIds[0] != "1180097")
-            throw new FormatException("Step 6 pilot remains limited to candidate 1180097.");
+            throw new FormatException("Step 7 pilot remains limited to candidate 1180097.");
     }
 
     public void ValidateCollector()

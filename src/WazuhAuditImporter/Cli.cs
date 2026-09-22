@@ -14,8 +14,8 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once"))
-                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once or help.");
+            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work"))
+                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work or help.");
             string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null;
             var apply = false;
             var i = 1;
@@ -49,7 +49,7 @@ public static class Cli
             }
             var settings = ImportSettings.Load(config);
             Console.WriteLine("Wazuh Audit Importer - pilot");
-            Console.WriteLine(command is "worker-preflight" or "work-once"
+            Console.WriteLine(command is "worker-preflight" or "work-once" or "work"
                 ? "Candidate worker may read file metadata only. No source-file changes. No Solr writes.\n"
                 : "No Solr writes. No source-document access.\n");
 
@@ -86,10 +86,10 @@ public static class Cli
                 return CandidateWorker.Preflight(settings, workerRoot);
             }
 
-            if (command == "work-once" && string.IsNullOrWhiteSpace(workerRoot))
-                throw new FormatException("work-once requires --worker-root <accessible candidate root>.");
-            if (command == "work-once" && string.IsNullOrWhiteSpace(stateDir))
-                throw new FormatException("work-once requires --state-dir <persistent local worker state directory>.");
+            if ((command is "work-once" or "work") && string.IsNullOrWhiteSpace(workerRoot))
+                throw new FormatException($"{command} requires --worker-root <accessible candidate root>.");
+            if ((command is "work-once" or "work") && string.IsNullOrWhiteSpace(stateDir))
+                throw new FormatException($"{command} requires --state-dir <persistent local worker state directory>.");
 
             username ??= settings.DatabaseUser;
             if (string.IsNullOrWhiteSpace(username))
@@ -100,6 +100,18 @@ public static class Cli
             }
             if (string.IsNullOrWhiteSpace(username)) throw new FormatException("A database username is required.");
             var password = Environment.GetEnvironmentVariable("WAZUH_DB_PASSWORD") ?? ReadPassword("MariaDB password (not saved): ");
+
+            if (command == "work")
+            {
+                try
+                {
+                    return ContinuousWorker.Run(settings, username, password, workerRoot!, stateDir!);
+                }
+                finally
+                {
+                    password = string.Empty;
+                }
+            }
 
             if (command == "collect")
             {
@@ -245,7 +257,9 @@ public static class Cli
           worker-preflight --worker-root <root>      Verify metadata read access for the allowed candidate;
                                                     no DB writes and no queue claim.
           work-once --worker-root <root>             Claim one due candidate, reconcile file metadata against
-                    [--state-dir <dir>]              its last completed versioned snapshot, then complete/requeue.
+                    --state-dir <dir>                its last completed versioned snapshot, then complete/requeue.
+          work --worker-root <root>                  Continuously claim/reconcile due candidates using the same
+               --state-dir <dir>                     lease/version rules; stop cleanly with Ctrl+C.
 
         Optional: --config <path.json>  --db-user <username>  --indexer-user <username>
                   --worker-root <fully-qualified local/UNC root>  --state-dir <local state directory>
