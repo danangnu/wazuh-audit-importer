@@ -1,0 +1,216 @@
+{
+  "_index": "wazuh-alerts-4.x-2026.09.22",
+  "_id": "Ud8Jx6ABhXSOv5gC3qfg",
+  "_score": null,
+  "_source": {
+    "syscheck": {
+      "mode": "realtime",
+      "path": "c:\\shares-dfs\\fasttrack\\candidate\\to 1189999\\1180097\\wazuh_poc_20260922_103746_552_renamed.txt",
+      "sha1_after": "60d1275369d958d7c428e1199fc3042b849ef3b5",
+      "uname_after": "Administrators",
+      "mtime_after": "2026-09-22T02:44:08",
+      "attrs_after": [
+        "ARCHIVE",
+        "NOT_CONTENT_INDEXED"
+      ],
+      "size_after": "128",
+      "uid_after": "S-1-5-32-544",
+      "win_perm_after": [
+        {
+          "allowed": [
+            "DELETE",
+            "READ_CONTROL",
+            "SYNCHRONIZE",
+            "READ_DATA",
+            "WRITE_DATA",
+            "APPEND_DATA",
+            "READ_EA",
+            "WRITE_EA",
+            "EXECUTE",
+            "READ_ATTRIBUTES",
+            "WRITE_ATTRIBUTES",
+            [
+              "DELETE",
+              "READ_CONTROL",
+              "WRITE_DAC",
+              "WRITE_OWNER",
+              "SYNCHRONIZE",
+              "READ_DATA",
+              "WRITE_DATA",
+              "APPEND_DATA",
+              "READ_EA",
+              "WRITE_EA",
+              "EXECUTE",
+              "READ_ATTRIBUTES",
+              "WRITE_ATTRIBUTES"
+            ],
+            [
+              "DELETE",
+              "READ_CONTROL",
+              "SYNCHRONIZE",
+              "READ_DATA",
+              "WRITE_DATA",
+              "APPEND_DATA",
+              "READ_EA",
+              "WRITE_EA",
+              "EXECUTE",
+              "READ_ATTRIBUTES",
+              "WRITE_ATTRIBUTES"
+            ],
+            [
+              "DELETE",
+              "READ_CONTROL",
+              "WRITE_DAC",
+              "WRITE_OWNER",
+              "SYNCHRONIZE",
+              "READ_DATA",
+              "WRITE_DATA",
+              "APPEND_DATA",
+              "READ_EA",
+              "WRITE_EA",
+              "EXECUTE",
+              "READ_ATTRIBUTES",
+              "WRITE_ATTRIBUTES"
+            ]
+          ],
+          "name": "allied"
+        },
+        {
+          "allowed": [
+            "DELETE",
+            "READ_CONTROL",
+            "WRITE_DAC",
+            "WRITE_OWNER",
+            "SYNCHRONIZE",
+            "READ_DATA",
+            "WRITE_DATA",
+            "APPEND_DATA",
+            "READ_EA",
+            "WRITE_EA",
+            "EXECUTE",
+            "READ_ATTRIBUTES",
+            "WRITE_ATTRIBUTES"
+          ],
+          "name": "Domain Admins"
+        },
+        {
+          "allowed": [
+            "DELETE",
+            "READ_CONTROL",
+            "SYNCHRONIZE",
+            "READ_DATA",
+            "WRITE_DATA",
+            "APPEND_DATA",
+            "READ_EA",
+            "WRITE_EA",
+            "EXECUTE",
+            "READ_ATTRIBUTES",
+            "WRITE_ATTRIBUTES"
+          ],
+          "name": "Domain Users"
+        },
+        {
+          "allowed": [
+            "DELETE",
+            "READ_CONTROL",
+            "WRITE_DAC",
+            "WRITE_OWNER",
+            "SYNCHRONIZE",
+            "READ_DATA",
+            "WRITE_DATA",
+            "APPEND_DATA",
+            "READ_EA",
+            "WRITE_EA",
+            "EXECUTE",
+            "READ_ATTRIBUTES",
+            "WRITE_ATTRIBUTES"
+          ],
+          "name": "Administrators"
+        }
+      ],
+      "event": "deleted",
+      "md5_after": "0e1d586dbfac656e6c0f9028a56822c3",
+      "sha256_after": "cb841830f56e03c0b537d98d5ff1d954f1dfdfdf9d73aeed917b1254c8526258"
+    },
+    "input": {
+      "type": "log"
+    },
+    "agent": {
+      "ip": "192.168.100.20",
+      "name": "FLOSVR01",
+      "id": "001"
+    },
+    "manager": {
+      "name": "wahzuh-lab"
+    },
+    "rule": {
+      "mail": false,
+      "level": 7,
+      "pci_dss": [
+        "11.5"
+      ],
+      "hipaa": [
+        "164.312.c.1",
+        "164.312.c.2"
+      ],
+      "tsc": [
+        "PI1.4",
+        "PI1.5",
+        "CC6.1",
+        "CC6.8",
+        "CC7.2",
+        "CC7.3"
+      ],
+      "nist_800_53": [
+        "SI.7"
+      ],
+      "gdpr": [
+        "II_5.1.f"
+      ],
+      "description": "File deleted.",
+      "groups": [
+        "ossec",
+        "syscheck",
+        "syscheck_entry_deleted",
+        "syscheck_file"
+      ],
+      "firedtimes": 2,
+      "mitre": {
+        "technique": [
+          "File Deletion",
+          "Data Destruction"
+        ],
+        "id": [
+          "T1070.004",
+          "T1485"
+        ],
+        "tactic": [
+          "Defense Evasion",
+          "Impact"
+        ]
+      },
+      "id": "553",
+      "gpg13": [
+        "4.11"
+      ]
+    },
+    "location": "syscheck",
+    "decoder": {
+      "name": "syscheck_deleted"
+    },
+    "id": "1790045703.1555358",
+    "full_log": "File 'c:\\shares-dfs\\fasttrack\\candidate\\to 1189999\\1180097\\wazuh_poc_20260922_103746_552_renamed.txt' deleted\nMode: realtime\n",
+    "timestamp": "2026-09-22T02:55:03.623+0000"
+  },
+  "fields": {
+    "syscheck.mtime_after": [
+      "2026-09-22T02:44:08.000Z"
+    ],
+    "timestamp": [
+      "2026-09-22T02:55:03.623Z"
+    ]
+  },
+  "sort": [
+    1790045703623
+  ]
+}

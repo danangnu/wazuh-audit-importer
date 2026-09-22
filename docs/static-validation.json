@@ -1,0 +1,12 @@
+{
+  "validation_kind": "static_only",
+  "csproj_xml_and_references": "passed",
+  "source_delimiter_check": "passed",
+  "supplied_json_structure": "passed",
+  "insert_columns_vs_supplied_schema": "passed",
+  "offline_selftests_included": 31,
+  "dotnet_build": "not_run_no_sdk_available",
+  "dotnet_restore": "not_run_network_DNS_unavailable",
+  "offline_selftests_execution": "not_run",
+  "live_MariaDB_10_1_import": "not_run_no_connection_to_user_database"
+}

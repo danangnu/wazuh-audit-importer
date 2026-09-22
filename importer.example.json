@@ -1,0 +1,21 @@
+{
+  "DatabaseHost": "127.0.0.1",
+  "DatabasePort": 3306,
+  "DatabaseName": "wazuh_audit_poc",
+  "ExpectedDatabaseServer": "MGMTNB08",
+  "DatabaseUser": null,
+  "SourceInstance": "wazuh-lab-pilot-01",
+  "AgentId": "001",
+  "AgentName": "FLOSVR01",
+  "CandidateRoot": "C:\\Shares-DFS\\FastTrack\\Candidate\\To 1189999",
+  "CandidateIds": ["1180097"],
+  "IndexerBaseUrl": "https://127.0.0.1:19200",
+  "IndexerIndexPattern": "wazuh-alerts-4.x-*",
+  "IndexerAllowUntrustedCertificate": true,
+  "IndexerTimeoutSeconds": 30,
+  "IndexerInitialLookbackMinutes": 1440,
+  "IndexerOverlapSeconds": 600,
+  "IndexerPageSize": 200,
+  "IndexerMaxPages": 20,
+  "CollectorStreamKey": "flosvr01-fim-pilot"
+}
