@@ -1,7 +1,7 @@
-# Step 10A — Concrete Solr action planning (dry run)
+# Step 10B — Legacy-compatible Solr payload generation (dry run)
 
-Step 10A expands the latest **completed** candidate-level `reindex_candidate`
-plan into concrete per-document actions, while keeping Solr strictly read-only.
+Step 10B converts the Step 10A concrete actions into stored, reviewable Solr
+update JSON **without sending anything to Solr**.
 
 Pilot scope remains fixed:
 
@@ -13,22 +13,51 @@ Canonical root    : G:\Candidate\To 1189999
 MariaDB           : 127.0.0.1:3306 / wazuh_audit_poc on MGMTNB08
 ```
 
+## Legacy extraction contract used
+
+The supplied legacy indexing source shows:
+
+- `.txt`, `.html`, `.htm` -> `My.Computer.FileSystem.ReadAllText(filePath)`;
+- `.doc`, `.docx`, `.docm`, `.rtf` -> Aspose.Words 24.9.0 text export;
+- `.pdf` -> PDFBox 1.8.2 `PDFTextStripper`;
+- after extraction, the legacy code removes all characters except
+  `[a-zA-Z0-9_.]` for its emptiness test and does **not** index the document
+  when that result is empty;
+- Solr fields are `id`, `dbcandno`, `content`, `path`, `last_update`.
+
+Step 10B ports the `ReadAllText` path exactly. It deliberately **blocks** Word
+and PDF payloads instead of silently substituting a different extractor. This is
+safer than calling a modern extractor and claiming byte/text compatibility with
+the legacy index.
+
+For the current Step 10A candidate state, `2026 09 16 001.txt` was observed as a
+0-byte source file. Therefore the expected first Step 10B result is:
+
+```text
+delete_document -> READY
+index_document  -> BLOCKED (empty_document_legacy_behavior)
+```
+
+That blocked index is expected and reproduces the supplied legacy `doIndexing`
+behavior.
+
 ## Safety boundary
 
-`solr-plan-actions` may:
+`solr-build-payloads` may:
 
-- read FLOSVR01 file **metadata**;
-- call the approved Solr schema/select endpoints with HTTP GET;
-- read the latest `solr_mutation_queue` and `candidate_work_queue` state;
-- insert idempotent dry-run rows into `solr_mutation_action`.
+- read Step 10A concrete action rows from MariaDB;
+- read **source file contents** for `index_document` actions;
+- hash the source file and extracted content;
+- store dry-run payload/evidence rows in `solr_action_payload`;
+- write a local JSON report.
 
 It does **not**:
 
-- read document contents;
-- change files on FLOSVR01;
-- call Solr add/delete/update/commit/optimize/config APIs;
-- mark any action `applied`;
-- execute OCR or content extraction.
+- change source files;
+- POST/PUT/DELETE to Solr;
+- call Solr commit/optimize/config APIs;
+- change `solr_mutation_action.status` from `planned`;
+- mark anything `applied`.
 
 ## 1. Build
 
@@ -37,25 +66,23 @@ cd "C:\Users\dnurdiansyah\Documents\NewAllied\WazuhAuditImporter"
 .\Restore-And-Preview.cmd
 ```
 
-The offline self-tests include Step 10A action ordering, collision blocking and
-idempotency checks. They do not connect to MariaDB or Solr.
+The offline self-tests now cover Step 10B delete payloads, text extraction,
+legacy empty-document behavior, extractor blocking, and source metadata drift.
+They make no MariaDB or Solr connection.
 
-## 2. Apply the Step 10A database migration
+## 2. Apply migration
 
-Before running any Step 10A binary that performs a database schema check, execute
-this file in the existing local MariaDB SQL client:
+Execute in the local MariaDB client:
 
 ```text
-sql\010_create_solr_mutation_action.sql
+sql\012_create_solr_action_payload.sql
 ```
 
 It creates only:
 
 ```text
-wazuh_audit_poc.solr_mutation_action
+wazuh_audit_poc.solr_action_payload
 ```
-
-Do not drop or recreate the existing audit/queue tables.
 
 Then verify:
 
@@ -63,95 +90,77 @@ Then verify:
 dotnet .\src\WazuhAuditImporter\bin\Debug\net9.0\WazuhAuditImporter.dll check-db
 ```
 
-`check-db` should now include `solr_mutation_action` in its row counts.
+`check-db` should include a `solr_action_payload` count.
 
-## 3. Generate concrete actions
+## 3. Build/stash payloads
 
 ```powershell
 $root = "\\FLOSVR01\FastTrack\Candidate\To 1189999"
 
 dotnet .\src\WazuhAuditImporter\bin\Debug\net9.0\WazuhAuditImporter.dll `
-    solr-plan-actions `
+    solr-build-payloads `
     --worker-root "$root" `
-    --report-dir ".\solr-action-reports"
+    --report-dir ".\solr-payload-reports"
 ```
 
-Or use:
+Or:
 
 ```powershell
-.\Solr-Plan-Actions.cmd
+.\Solr-Build-Payloads.cmd
 ```
 
-For the Step 9 result previously observed for candidate 1180097, a normal plan
-would be conceptually:
+A ready delete payload is stored in the Solr JSON update form:
+
+```json
+{"delete":{"id":"..."}}
+```
+
+A ready index payload contains:
 
 ```text
-PLAN DELETE_DOCUMENT
-  stale Solr document:
-  G:\Candidate\To 1189999\1180097\1180097 2025 08 22 Choi, Arthur Resume.pdf
-
-PLAN INDEX_DOCUMENT
-  current FLOSVR01 file:
-  G:\Candidate\To 1189999\1180097\2026 09 16 001.txt
+id
+dbcandno
+content
+path
+last_update
 ```
 
-The exact IDs/paths are re-read at runtime. No action above is hard-coded.
+and is wrapped in a JSON `add.doc` update object. `last_update` is frozen at the
+first payload-generation time so the reviewed payload is stable on replay.
 
-## Guardrails
+## Blocked payloads
 
-Step 10A refuses to persist concrete actions when:
-
-- the candidate queue is not `completed` at the same version as the latest
-  candidate Solr mutation;
-- the latest mutation is not `planned/reindex_candidate`;
-- Step 9 reports `ID_MISMATCH` or `DUPLICATE_SOLR_PATH`;
-- multiple current FLOSVR01 files generate the same legacy Solr ID;
-- an index action's legacy ID is already occupied by another candidate;
-- an existing action row for the same mutation/order has different immutable
-  plan data.
-
-A same-candidate ID may be reused only when its currently occupying Solr document
-is itself stale and is ordered for deletion before the index action. This supports
-safe move/rename-style planning without assuming that two Wazuh events form a
-rename.
-
-## Action ordering and status
-
-Concrete rows use:
+A blocked row stores no executable `payload_json`. Examples:
 
 ```text
-action_type = delete_document | index_document
-status      = planned
+empty_document_legacy_behavior
+legacy_extractor_not_ported
+source_file_missing
+source_changed_since_action_plan
+unsupported_extension
 ```
 
-Deletes are ordered before indexes. Rows also capture source metadata for index
-plans (`source_file_length`, `source_file_last_write_utc`) and the observed
-Solr `last_update` for delete plans. This gives a later executor enough evidence
-to revalidate before any write.
+If any payload is blocked, the command stores the evidence then exits non-zero.
+This is a review gate, not a Solr failure. Do not bypass it by manually marking
+the action applied.
 
-Rerunning the same deterministic plan is idempotent. It reports existing rows
-rather than adding duplicates.
+Existing payload rows are reused on rerun instead of being regenerated with a
+new timestamp. A later executor must still revalidate source hash/metadata before
+using a stored index payload.
 
-## Verification
+## 4. Verify
 
-Run the read-only SQL:
+Run:
 
 ```text
-sql\011_verify_solr_actions.sql
+sql\013_verify_solr_payloads.sql
 ```
 
-Expected Step 10A rows remain:
+Expected current pilot outcome is one `ready` delete row and one `blocked` index
+row because the currently planned TXT file is empty.
 
-```text
-status         = planned
-attempt_count  = 0
-applied_at_utc = NULL
-last_error     = NULL
-```
+## Next step
 
-## What comes next
-
-Step 10B will reproduce/validate the legacy document construction and content
-extraction required for `index_document`. It should still perform no Solr writes.
-Actual controlled execution belongs to a later step after content generation and
-pre-execution revalidation are accepted.
+Step 10C/11 should first resolve/validate document extraction for non-empty
+Word/PDF content and add pre-execution source revalidation. Only after that should
+any controlled Solr write be considered.

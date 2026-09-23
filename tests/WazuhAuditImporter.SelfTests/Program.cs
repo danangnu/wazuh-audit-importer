@@ -358,6 +358,92 @@ cases.Add(("Step 10A action identity is deterministic", () =>
     Assert(a.Single().IdempotencyKey.Length == 64);
 }));
 
+
+cases.Add(("Step 10B delete action builds ready delete-by-id payload", () =>
+{
+    var action = new SolrStoredAction(1, 3, settings.SourceInstance, settings.AgentId, "1180097", 22,
+        1, "delete_document", "planned", "stale_in_solr", "oldpdf",
+        @"G:\Candidate\To 1189999\1180097\old.pdf", null, null, null, "x");
+    var payload = SolrPayloadBuilder.Build(action, Path.GetTempPath(), new DateTime(2026,9,23,2,0,0,DateTimeKind.Utc));
+    Assert(payload.Status == "ready" && payload.Extractor == "solr_delete_by_id");
+    Assert(payload.PayloadJson == "{\"delete\":{\"id\":\"oldpdf\"}}");
+    Assert(payload.PayloadSha256?.Length == 64);
+}));
+
+cases.Add(("Step 10B nonempty txt mirrors legacy ReadAllText and builds Solr document", () =>
+{
+    var root = Path.Combine(Path.GetTempPath(), "wai-step10b-" + Guid.NewGuid().ToString("N"));
+    var candidate = Path.Combine(root, "1180097"); Directory.CreateDirectory(candidate);
+    var file = Path.Combine(candidate, "resume.txt"); File.WriteAllText(file, "Hello candidate 1180097");
+    var info = new FileInfo(file);
+    try
+    {
+        var action = new SolrStoredAction(2, 3, settings.SourceInstance, settings.AgentId, "1180097", 22,
+            2, "index_document", "planned", "missing_in_solr", "resumetxt",
+            @"G:\Candidate\To 1189999\1180097\resume.txt", file, (ulong)info.Length, info.LastWriteTimeUtc, "y");
+        var payload = SolrPayloadBuilder.Build(action, root, new DateTime(2026,9,23,2,1,2,DateTimeKind.Utc));
+        Assert(payload.Status == "ready" && payload.Extractor == "legacy_readalltext");
+        Assert(payload.PayloadJson!.Contains("\"dbcandno\":\"1180097\"", StringComparison.Ordinal));
+        Assert(payload.PayloadJson.Contains("Hello candidate 1180097", StringComparison.Ordinal));
+        Assert(payload.PayloadJson.Contains(@"G:\\Candidate\\To 1189999\\1180097\\resume.txt", StringComparison.Ordinal));
+        Assert(payload.ContentCharCount == 23);
+    }
+    finally { Directory.Delete(root, true); }
+}));
+
+cases.Add(("Step 10B empty txt is blocked exactly as legacy doIndexing", () =>
+{
+    var root = Path.Combine(Path.GetTempPath(), "wai-step10b-" + Guid.NewGuid().ToString("N"));
+    var candidate = Path.Combine(root, "1180097"); Directory.CreateDirectory(candidate);
+    var file = Path.Combine(candidate, "empty.txt"); File.WriteAllText(file, string.Empty);
+    var info = new FileInfo(file);
+    try
+    {
+        var action = new SolrStoredAction(3, 3, settings.SourceInstance, settings.AgentId, "1180097", 22,
+            2, "index_document", "planned", "missing_in_solr", "emptytxt",
+            @"G:\Candidate\To 1189999\1180097\empty.txt", file, (ulong)info.Length, info.LastWriteTimeUtc, "z");
+        var payload = SolrPayloadBuilder.Build(action, root, DateTime.UtcNow);
+        Assert(payload.Status == "blocked" && payload.BlockReason == "empty_document_legacy_behavior");
+        Assert(payload.PayloadJson is null && payload.SourceFileSha256?.Length == 64);
+    }
+    finally { Directory.Delete(root, true); }
+}));
+
+cases.Add(("Step 10B PDF blocks rather than silently changing the legacy extractor", () =>
+{
+    var root = Path.Combine(Path.GetTempPath(), "wai-step10b-" + Guid.NewGuid().ToString("N"));
+    var candidate = Path.Combine(root, "1180097"); Directory.CreateDirectory(candidate);
+    var file = Path.Combine(candidate, "resume.pdf"); File.WriteAllBytes(file, [1,2,3]);
+    var info = new FileInfo(file);
+    try
+    {
+        var action = new SolrStoredAction(4, 3, settings.SourceInstance, settings.AgentId, "1180097", 22,
+            2, "index_document", "planned", "missing_in_solr", "resumepdf",
+            @"G:\Candidate\To 1189999\1180097\resume.pdf", file, (ulong)info.Length, info.LastWriteTimeUtc, "q");
+        var payload = SolrPayloadBuilder.Build(action, root, DateTime.UtcNow);
+        Assert(payload.Status == "blocked" && payload.Extractor == "legacy_pdfbox_1_8_2_not_ported");
+        Assert(payload.BlockReason == "legacy_extractor_not_ported");
+    }
+    finally { Directory.Delete(root, true); }
+}));
+
+cases.Add(("Step 10B source metadata change blocks stale payload generation", () =>
+{
+    var root = Path.Combine(Path.GetTempPath(), "wai-step10b-" + Guid.NewGuid().ToString("N"));
+    var candidate = Path.Combine(root, "1180097"); Directory.CreateDirectory(candidate);
+    var file = Path.Combine(candidate, "a.txt"); File.WriteAllText(file, "changed");
+    var info = new FileInfo(file);
+    try
+    {
+        var action = new SolrStoredAction(5, 3, settings.SourceInstance, settings.AgentId, "1180097", 22,
+            2, "index_document", "planned", "missing_in_solr", "atxt",
+            @"G:\Candidate\To 1189999\1180097\a.txt", file, 999, info.LastWriteTimeUtc, "r");
+        var payload = SolrPayloadBuilder.Build(action, root, DateTime.UtcNow);
+        Assert(payload.Status == "blocked" && payload.BlockReason == "source_changed_since_action_plan");
+    }
+    finally { Directory.Delete(root, true); }
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -365,5 +451,5 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A planning tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B payload tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;

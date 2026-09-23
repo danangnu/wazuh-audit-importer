@@ -78,6 +78,23 @@ public static class SchemaContract
             new("applied_at_utc", "datetime", null, true, null, null, false),
             new("last_error", "text", null, true, null, null, false)
         ],
+        ["solr_action_payload"] = [
+            new("payload_id", "bigint", null, false, null, null, true),
+            new("action_id", "bigint", null, false, null, null, false),
+            new("mutation_id", "bigint", null, false, null, null, false),
+            new("action_type", "enum", null, false, null, "enum('delete_document','index_document')", false),
+            new("status", "enum", null, false, null, "enum('ready','blocked')", false),
+            new("extractor", "varchar", 64, false, "ascii_bin", null, false),
+            new("payload_json", "longtext", null, true, null, null, false),
+            new("payload_sha256", "char", 64, true, "ascii_bin", null, false),
+            new("source_file_sha256", "char", 64, true, "ascii_bin", null, false),
+            new("content_sha256", "char", 64, true, "ascii_bin", null, false),
+            new("content_char_count", "bigint", null, true, null, null, false),
+            new("source_file_length", "bigint", null, true, null, null, false),
+            new("source_file_last_write_utc", "datetime", null, true, null, null, false),
+            new("block_reason", "varchar", 191, true, null, null, false),
+            new("generated_at_utc", "datetime", null, false, null, null, false)
+        ],
         ["solr_mutation_action"] = [
             new("action_id", "bigint", null, false, null, null, true),
             new("mutation_id", "bigint", null, false, null, null, false),
@@ -175,6 +192,8 @@ public static class SchemaContract
             ["mutation_id", "action_order"]);
         VerifyUnique(connection, "solr_mutation_action", "uq_solr_action_idempotency",
             ["idempotency_key"]);
+        VerifyUnique(connection, "solr_action_payload", "uq_solr_payload_action",
+            ["action_id"]);
         Console.WriteLine("Schema guard: required columns, InnoDB engines and deduplication indexes matched.");
     }
 

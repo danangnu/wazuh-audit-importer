@@ -29,3 +29,15 @@ From the supplied Paths.ini:
 
 Step 9 does not copy or package Paths.ini because it also contains unrelated
 sensitive settings.
+
+## Step 10B extraction details from supplied source
+
+The supplied `SolrIndexing.documentProcessing` dispatches `.pdf` to PDFBox
+`PDFTextStripper`, Word/RTF formats to `classDocument.ExtractTextUsingAspose`,
+and TXT/HTML/HTM to `My.Computer.FileSystem.ReadAllText`. `classDocument` uses
+Aspose.Words 24.9.0 and removes the Aspose evaluation banners. `PDfProcessing`
+uses PDFBox 1.8.2. `doIndexing` returns `EmptyDocument` when the extracted text,
+after removing characters outside `[a-zA-Z0-9_.]`, has length zero.
+
+Step 10B ports only the ReadAllText branch now. Word/PDF actions remain blocked
+until those exact legacy extraction paths are validated in the .NET 9 tool.

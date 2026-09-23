@@ -1,0 +1,57 @@
+{
+  "MutationId": 4,
+  "CandidateId": "1180097",
+  "WorkerVersion": 23,
+  "WorkerRoot": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999",
+  "Payloads": [
+    {
+      "ActionId": 3,
+      "MutationId": 4,
+      "ActionType": "delete_document",
+      "Status": "ready",
+      "Extractor": "solr_delete_by_id",
+      "PayloadJson": "{\u0022delete\u0022:{\u0022id\u0022:\u00221180097-2025-08-22-choi-arthur-resume\u0022}}",
+      "PayloadSha256": "969e8e3e8e8e507caa2f067016df2510a670c55175a040611ead72c4d6403aad",
+      "SourceFileSha256": null,
+      "ContentSha256": null,
+      "ContentCharCount": null,
+      "SourceFileLength": null,
+      "SourceFileLastWriteUtc": null,
+      "BlockReason": null,
+      "GeneratedAtUtc": "2026-09-23T03:12:43.182849Z"
+    },
+    {
+      "ActionId": 4,
+      "MutationId": 4,
+      "ActionType": "index_document",
+      "Status": "blocked",
+      "Extractor": "legacy_readalltext",
+      "PayloadJson": null,
+      "PayloadSha256": null,
+      "SourceFileSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ContentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ContentCharCount": 0,
+      "SourceFileLength": 0,
+      "SourceFileLastWriteUtc": "2026-09-16T08:23:37.5542189Z",
+      "BlockReason": "empty_document_legacy_behavior",
+      "GeneratedAtUtc": "2026-09-23T03:12:43.182849Z"
+    },
+    {
+      "ActionId": 5,
+      "MutationId": 4,
+      "ActionType": "index_document",
+      "Status": "ready",
+      "Extractor": "legacy_readalltext",
+      "PayloadJson": "{\u0022add\u0022:{\u0022doc\u0022:{\u0022id\u0022:\u0022wazuh-solr-content-testtxt\u0022,\u0022dbcandno\u0022:\u00221180097\u0022,\u0022content\u0022:\u0022Solr indexing test for candidate 1180097.\\nThis document contains searchable content.\\nCreated: 2026-09-23T11:07:19.7631257\\u002B08:00\\r\\n\u0022,\u0022path\u0022:\u0022G:\\\\Candidate\\\\To 1189999\\\\1180097\\\\WAZUH_SOLR_CONTENT_TEST.txt\u0022,\u0022last_update\u0022:\u00222026-09-23T03:12:43.182849Z\u0022}}}",
+      "PayloadSha256": "bfc1ac024c017d47aba7db3b689b89cba1424ec433bd9eb389b46811435ffa1c",
+      "SourceFileSha256": "fec41201e7fce72589c6dad9dbc996c277ed8b1c045cb6adb4bdaff0f375bc99",
+      "ContentSha256": "fec41201e7fce72589c6dad9dbc996c277ed8b1c045cb6adb4bdaff0f375bc99",
+      "ContentCharCount": 129,
+      "SourceFileLength": 129,
+      "SourceFileLastWriteUtc": "2026-09-23T03:07:19.8256273Z",
+      "BlockReason": null,
+      "GeneratedAtUtc": "2026-09-23T03:12:43.182849Z"
+    }
+  ],
+  "GeneratedAtUtc": "2026-09-23T03:12:43.182849Z"
+}
