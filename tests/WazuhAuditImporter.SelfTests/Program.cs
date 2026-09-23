@@ -359,6 +359,32 @@ cases.Add(("Step 10A action identity is deterministic", () =>
 }));
 
 
+
+cases.Add(("Step 12 changed file forces reindex even when Solr path is MATCH", () =>
+{
+    var schema = new SolrSchemaInfo("id", new Dictionary<string, SolrFieldInfo>(), "test");
+    var disk = new List<DiskSolrFile>
+    {
+        new(@"WAZUH_SOLR_CONTENT_TEST.txt", @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097\WAZUH_SOLR_CONTENT_TEST.txt",
+            @"G:\Candidate\To 1189999\1180097\WAZUH_SOLR_CONTENT_TEST.txt", "wazuh-solr-content-testtxt", 129,
+            new DateTime(2026,9,23,4,30,0,DateTimeKind.Utc), true, null)
+    };
+    var existing = new SolrReadOnlyDocument("wazuh-solr-content-testtxt", "1180097",
+        @"G:\Candidate\To 1189999\1180097\WAZUH_SOLR_CONTENT_TEST.txt",
+        new DateTimeOffset(new DateTime(2026,9,23,4,0,0,DateTimeKind.Utc)));
+    var solr = new List<SolrReadOnlyDocument> { existing };
+    var report = SolrReadOnlyDiscovery.Compare(settings, "1180097",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097", schema, disk, solr);
+    Assert(report.Comparisons.Single().Status == "MATCH");
+    var target = new SolrMutationTarget(6, settings.SourceInstance, settings.AgentId, "1180097",
+        25, "reindex_candidate", "planned", "completed", 25, 25);
+    var changed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "WAZUH_SOLR_CONTENT_TEST.txt" };
+    var actions = SolrConcreteActionBuilder.Build(target, report, disk, solr, _ => [existing], changed);
+    Assert(actions.Count == 1 && actions[0].ActionType == "index_document");
+    Assert(actions[0].Reason == "source_changed" && actions[0].SolrDocumentId == "wazuh-solr-content-testtxt");
+}));
+
 cases.Add(("Step 10B delete action builds ready delete-by-id payload", () =>
 {
     var action = new SolrStoredAction(1, 3, settings.SourceInstance, settings.AgentId, "1180097", 22,
@@ -512,6 +538,73 @@ cases.Add(("Step 11 detects current Solr action-plan drift", () =>
     throw new Exception("Expected Step 11 action-plan drift rejection.");
 }));
 
+
+cases.Add(("Step 12 orchestration defaults accepted", () => new ImportSettings().Validate()));
+cases.Add(("Step 12 orchestration poll interval bounded", () => Reject(() => new ImportSettings { OrchestratorPollSeconds = 1 }.Validate())));
+cases.Add(("Step 12 orchestration worker drain bounded", () => Reject(() => new ImportSettings { OrchestratorMaxWorkerItemsPerCycle = 0 }.Validate())));
+
+cases.Add(("Step 12 decision is idle before any mutation exists", () =>
+{
+    var d = PipelineDecision.Decide(null);
+    Assert(d.Disposition == PipelineMutationDisposition.Idle);
+}));
+
+cases.Add(("Step 12 decision waits for worker version convergence", () =>
+{
+    var snap = new PipelineMutationSnapshot(20, "1180097", 30, "reindex_candidate", "planned",
+        "pending", 31, 30, 0, 0, 0, 0);
+    var d = PipelineDecision.Decide(snap);
+    Assert(d.Disposition == PipelineMutationDisposition.WaitingForWorker);
+}));
+
+cases.Add(("Step 12 decision requests concrete actions", () =>
+{
+    var snap = new PipelineMutationSnapshot(21, "1180097", 31, "reindex_candidate", "planned",
+        "completed", 31, 31, 0, 0, 0, 0);
+    var d = PipelineDecision.Decide(snap);
+    Assert(d.Disposition == PipelineMutationDisposition.NeedsActions);
+}));
+
+cases.Add(("Step 12 decision requests missing payloads", () =>
+{
+    var snap = new PipelineMutationSnapshot(22, "1180097", 32, "reindex_candidate", "planned",
+        "completed", 32, 32, 2, 0, 1, 0);
+    var d = PipelineDecision.Decide(snap);
+    Assert(d.Disposition == PipelineMutationDisposition.NeedsPayloads && snap.MissingPayloadCount == 1);
+}));
+
+cases.Add(("Step 12 decision blocks any blocked payload", () =>
+{
+    var snap = new PipelineMutationSnapshot(23, "1180097", 33, "reindex_candidate", "planned",
+        "completed", 33, 33, 2, 0, 1, 1);
+    var d = PipelineDecision.Decide(snap);
+    Assert(d.Disposition == PipelineMutationDisposition.BlockedPayload);
+}));
+
+cases.Add(("Step 12 decision exposes ready mutation for manual approval", () =>
+{
+    var snap = new PipelineMutationSnapshot(24, "1180097", 34, "reindex_candidate", "planned",
+        "completed", 34, 34, 2, 0, 2, 0);
+    var d = PipelineDecision.Decide(snap);
+    Assert(d.Disposition == PipelineMutationDisposition.ReadyForApproval);
+}));
+
+cases.Add(("Step 12 decision halts on unresolved failed execution", () =>
+{
+    var snap = new PipelineMutationSnapshot(25, "1180097", 35, "reindex_candidate", "failed",
+        "completed", 35, 35, 2, 2, 2, 0);
+    var d = PipelineDecision.Decide(snap);
+    Assert(d.Disposition == PipelineMutationDisposition.HaltedExecution);
+}));
+
+cases.Add(("Step 12 decision treats applied mutation as complete", () =>
+{
+    var snap = new PipelineMutationSnapshot(26, "1180097", 36, "reindex_candidate", "applied",
+        "completed", 36, 36, 2, 2, 2, 0);
+    var d = PipelineDecision.Decide(snap);
+    Assert(d.Disposition == PipelineMutationDisposition.Complete);
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -519,5 +612,5 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;

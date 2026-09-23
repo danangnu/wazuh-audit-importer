@@ -41,3 +41,13 @@ after removing characters outside `[a-zA-Z0-9_.]`, has length zero.
 
 Step 10B ports only the ReadAllText branch now. Word/PDF actions remain blocked
 until those exact legacy extraction paths are validated in the .NET 9 tool.
+
+
+## Step 12 same-path source changes
+
+A worker-detected `CHANGE` cannot be inferred from the legacy Solr `last_update` field because
+that field records indexing time rather than source-file modification time. Step 12 therefore
+uses the immutable worker `changes.changed` list from the Step 8 plan. If the changed file is
+still present and legacy-eligible, Step 10A produces an `index_document` action with
+`reason=source_changed` even when the Solr path/id comparison is otherwise `MATCH`. The same
+changed-file list is used again during Step 11 preflight drift regeneration.

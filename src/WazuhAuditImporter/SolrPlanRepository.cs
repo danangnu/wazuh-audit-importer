@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.Json;
 using MySqlConnector;
 
 namespace WazuhAuditImporter;
@@ -118,6 +119,44 @@ public static class SolrPlanRepository
         {
             try { tx.Rollback(); } catch { }
             throw;
+        }
+    }
+
+    public static IReadOnlySet<string> ReadChangedRelativePaths(MySqlConnection connection, ulong mutationId)
+    {
+        using var cmd = new MySqlCommand("""
+            SELECT plan_json
+            FROM wazuh_audit_poc.solr_mutation_queue
+            WHERE mutation_id=@mutation;
+            """, connection);
+        cmd.Parameters.AddWithValue("@mutation", mutationId);
+        var raw = Convert.ToString(cmd.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
+        if (string.IsNullOrWhiteSpace(raw))
+            throw new SolrConcreteActionException($"Mutation {mutationId} has no immutable Step 8 plan JSON.");
+
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            if (!doc.RootElement.TryGetProperty("changes", out var changes) ||
+                !changes.TryGetProperty("changed", out var changed) ||
+                changed.ValueKind != JsonValueKind.Array)
+                throw new SolrConcreteActionException($"Mutation {mutationId} plan JSON is missing changes.changed.");
+
+            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in changed.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(item.GetString()))
+                    throw new SolrConcreteActionException($"Mutation {mutationId} contains an invalid changed-file entry.");
+                var relative = item.GetString()!.Replace('/', '\\');
+                if (Path.IsPathFullyQualified(relative) || relative.Split('\\').Any(p => p is "" or "." or ".."))
+                    throw new SolrConcreteActionException($"Mutation {mutationId} contains an unsafe changed-file relative path.");
+                result.Add(relative);
+            }
+            return result;
+        }
+        catch (JsonException ex)
+        {
+            throw new SolrConcreteActionException($"Mutation {mutationId} plan JSON could not be parsed: {ex.Message}");
         }
     }
 

@@ -76,3 +76,28 @@ blocked-payload rejection, source/payload drift, and current action-plan drift,
 bringing the expected self-test count to 74. This preparation environment still
 has no .NET SDK and cannot compile or run those tests; MGMTNB08 remains the
 runtime acceptance environment.
+
+
+## Step 12 static validation
+
+Step 12 adds `pipeline-once` and `pipeline` as approval-gated orchestration commands. Static
+review confirms these commands call `SolrExecutor.Run(..., apply: false)` only; the Solr writer
+remains reachable only through the separate Step 11 `solr-execute --apply` path. Step 12 may
+write MariaDB audit/queue/plan/payload state, read source content during Step 10B, and issue
+read-only Solr/Indexer queries.
+
+The continuous pipeline holds a `FileShare.None` process lock under the persistent worker-state
+directory, retries transient DB/HTTP/I/O failures, preserves existing collector checkpoint and
+worker lease semantics, and writes a best-effort local `step12-pipeline-state.json` operational
+status file. A latest mutation in `processing` or `failed` state is not auto-retried.
+
+Step 12 also closes the same-path content-change gap: the immutable Step 8 `changes.changed`
+list is read from `solr_mutation_queue.plan_json` and passed into Step 10A. A changed eligible
+file that otherwise compares as `MATCH` produces an `index_document` with
+`reason=source_changed`. Step 11 preflight regenerates the same forced action from the immutable
+plan before any explicit apply.
+
+Twelve additional offline tests (including one content-change action test and eleven
+orchestration/configuration decision tests) bring the expected self-test count from 74 to 86.
+This preparation environment still has no .NET SDK, MariaDB, Wazuh Indexer or AlliedSolrCore;
+MGMTNB08 remains the required runtime compilation and integration-test environment.

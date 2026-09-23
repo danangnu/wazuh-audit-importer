@@ -24,3 +24,5 @@ worker-state/
 **/worker-state/
 solr-readonly-reports/
 solr-action-reports/
+solr-payload-reports/
+pipeline-reports/

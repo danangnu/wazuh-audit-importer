@@ -37,6 +37,12 @@ public sealed class ImportSettings
     public int WorkerPollSeconds { get; set; } = 5;
     public int WorkerLoopRetrySeconds { get; set; } = 15;
 
+    // Step 12 approval-gated orchestration. Step 12 may prepare plans/payloads and
+    // run Step 11 preflight, but it never calls the Solr update API.
+    public int OrchestratorPollSeconds { get; set; } = 10;
+    public int OrchestratorRetrySeconds { get; set; } = 20;
+    public int OrchestratorMaxWorkerItemsPerCycle { get; set; } = 10;
+
     // Step 9 read-only Solr discovery. This endpoint comes from the supplied legacy
     // Paths.ini. Step 9 permits HTTP GET requests only and never calls update APIs.
     public string SolrBaseUrl { get; set; } = "http://192.168.18.22:8983/solr/AlliedSolrCore";
@@ -89,6 +95,10 @@ public sealed class ImportSettings
             WorkerPollSeconds is < 2 or > 300 ||
             WorkerLoopRetrySeconds is < 5 or > 300)
             throw new FormatException("Worker timing settings are outside pilot limits.");
+        if (OrchestratorPollSeconds is < 5 or > 300 ||
+            OrchestratorRetrySeconds is < 5 or > 600 ||
+            OrchestratorMaxWorkerItemsPerCycle is < 1 or > 100)
+            throw new FormatException("Step 12 orchestration settings are outside pilot limits.");
         ValidateSolrReadOnly();
     }
 

@@ -10,7 +10,8 @@ public static class SolrConcreteActionBuilder
         SolrReadOnlyReport report,
         IReadOnlyList<DiskSolrFile> diskFiles,
         IReadOnlyList<SolrReadOnlyDocument> solrDocs,
-        Func<string, IReadOnlyList<SolrReadOnlyDocument>> queryById)
+        Func<string, IReadOnlyList<SolrReadOnlyDocument>> queryById,
+        IReadOnlySet<string>? forceReindexRelativePaths = null)
     {
         if (!target.CandidateId.Equals(report.CandidateId, StringComparison.Ordinal))
             throw new SolrConcreteActionException("Candidate mismatch between mutation target and read-only comparison.");
@@ -109,6 +110,64 @@ public static class SolrConcreteActionBuilder
                 checked((ulong)disk.Length),
                 TruncateToMicroseconds(DateTime.SpecifyKind(disk.LastWriteUtc, DateTimeKind.Utc)),
                 null));
+        }
+
+        // A content modification can leave the same legacy id/path in Solr, so a pure
+        // path reconciliation reports MATCH even though the document must be re-indexed.
+        // Step 12 carries the immutable worker "changed" list forward and forces an
+        // index action for those still-present, legacy-eligible files.
+        if (forceReindexRelativePaths is not null)
+        {
+            var diskByRelative = diskFiles.ToDictionary(x => x.RelativePath, StringComparer.OrdinalIgnoreCase);
+            var comparisonByPath = report.Comparisons
+                .GroupBy(x => SolrPathMapper.NormalizeForComparison(x.CanonicalPath), StringComparer.Ordinal)
+                .ToDictionary(x => x.Key, x => x.Single(), StringComparer.Ordinal);
+            var alreadyIndexedPaths = actions
+                .Where(x => x.ActionType == "index_document")
+                .Select(x => SolrPathMapper.NormalizeForComparison(x.CanonicalPath))
+                .ToHashSet(StringComparer.Ordinal);
+
+            foreach (var relative in forceReindexRelativePaths.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+            {
+                if (!diskByRelative.TryGetValue(relative, out var disk))
+                    throw new SolrConcreteActionException(
+                        $"Worker marked '{relative}' changed, but it is no longer present in the current FLOSVR01 inventory. Wait for the newer file event before planning.");
+                if (!disk.LegacyEligible)
+                    continue;
+
+                var normalized = SolrPathMapper.NormalizeForComparison(disk.CanonicalSolrPath);
+                if (alreadyIndexedPaths.Contains(normalized))
+                    continue;
+                if (!comparisonByPath.TryGetValue(normalized, out var comparison))
+                    throw new SolrConcreteActionException($"Changed file '{relative}' has no current Solr comparison row.");
+                if (comparison.Status == "SKIPPED_BY_LEGACY_FILTER")
+                    continue;
+                if (comparison.Status == "MISSING_IN_SOLR")
+                    continue; // already handled above
+                if (comparison.Status != "MATCH")
+                    throw new SolrConcreteActionException(
+                        $"Changed file '{relative}' has unsupported live comparison state '{comparison.Status}'.");
+
+                var occupants = queryById(disk.LegacyId);
+                if (occupants.Count != 1 ||
+                    !occupants[0].CandidateId.Equals(target.CandidateId, StringComparison.Ordinal) ||
+                    SolrPathMapper.NormalizeForComparison(occupants[0].Path) != normalized)
+                    throw new SolrConcreteActionException(
+                        $"Changed file '{relative}' no longer resolves to exactly one matching Solr id/path. No action was persisted.");
+
+                actions.Add(Create(
+                    target,
+                    order++,
+                    "index_document",
+                    "source_changed",
+                    disk.LegacyId,
+                    disk.CanonicalSolrPath,
+                    disk.AccessiblePath,
+                    checked((ulong)disk.Length),
+                    TruncateToMicroseconds(DateTime.SpecifyKind(disk.LastWriteUtc, DateTimeKind.Utc)),
+                    occupants[0].LastUpdate?.UtcDateTime));
+                alreadyIndexedPaths.Add(normalized);
+            }
         }
 
         return actions;

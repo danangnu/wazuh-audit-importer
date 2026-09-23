@@ -14,8 +14,8 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute"))
-                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-plan-actions, solr-build-payloads, solr-execute or help.");
+            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "pipeline-once" or "pipeline"))
+                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-plan-actions, solr-build-payloads, solr-execute, pipeline-once, pipeline or help.");
             string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null;
             ulong? mutationId = null;
             var apply = false;
@@ -68,6 +68,7 @@ public static class Cli
                 "solr-execute" => apply
                     ? "Step 11 controlled Solr execution. --apply MAY write reviewed actions to the approved AlliedSolrCore after safety gates pass.\n"
                     : "Step 11 preflight only. Reads DB/source/Solr state; no Solr or MariaDB status writes.\n",
+                "pipeline-once" or "pipeline" => "Step 12 approval-gated orchestration. May collect events, reconcile metadata, read source content, store plans/payloads and run Step 11 preflight. NEVER writes to Solr.\n",
                 _ => "No Solr writes. No source-document access.\n"
             });
 
@@ -116,9 +117,9 @@ public static class Cli
             if (command == "solr-execute" && mutationId is null)
                 throw new FormatException("solr-execute requires --mutation-id <positive integer>.");
 
-            if ((command is "work-once" or "work") && string.IsNullOrWhiteSpace(workerRoot))
+            if ((command is "work-once" or "work" or "pipeline-once" or "pipeline") && string.IsNullOrWhiteSpace(workerRoot))
                 throw new FormatException($"{command} requires --worker-root <accessible candidate root>.");
-            if ((command is "work-once" or "work") && string.IsNullOrWhiteSpace(stateDir))
+            if ((command is "work-once" or "work" or "pipeline-once" or "pipeline") && string.IsNullOrWhiteSpace(stateDir))
                 throw new FormatException($"{command} requires --state-dir <persistent local worker state directory>.");
 
             username ??= settings.DatabaseUser;
@@ -151,6 +152,26 @@ public static class Cli
                 try
                 {
                     return ContinuousCollector.Run(settings, username, password, indexerUser, indexerPassword);
+                }
+                finally
+                {
+                    password = string.Empty;
+                    indexerPassword = string.Empty;
+                }
+            }
+
+            if (command is "pipeline-once" or "pipeline")
+            {
+                indexerUser ??= "admin";
+                var indexerPassword = Environment.GetEnvironmentVariable("WAZUH_INDEXER_PASSWORD") ??
+                    ReadPassword($"Wazuh Indexer password for {indexerUser} (not saved): ");
+                try
+                {
+                    return command == "pipeline"
+                        ? PipelineOrchestrator.RunContinuous(settings, username, password, indexerUser, indexerPassword,
+                            workerRoot!, stateDir!, reportDir)
+                        : PipelineOrchestrator.RunOnce(settings, username, password, indexerUser, indexerPassword,
+                            workerRoot!, stateDir!, reportDir);
                 }
                 finally
                 {
@@ -341,6 +362,12 @@ public static class Cli
                        --worker-root <root>          and current Solr/disk state. No writes without --apply.
           solr-execute --mutation-id <id>           Step 11 controlled execution after all gates pass.
                        --worker-root <root> --apply  Posts reviewed actions, explicit commit, GET verification, DB status update.
+          pipeline-once --worker-root <root>         Step 12: collect once, drain due worker items, then idempotently
+                        --state-dir <dir>            prepare Step 10A/10B and run Step 11 PRE-FLIGHT only. Never writes Solr.
+                        [--report-dir <dir>]
+          pipeline --worker-root <root>              Step 12 continuous approval-gated orchestration. Single-instance
+                   --state-dir <dir>                 file lock, retries, persistent local status, Ctrl+C clean stop.
+                   [--report-dir <dir>]              It NEVER calls the Solr update API; apply remains a separate command.
 
         Optional: --config <path.json>  --db-user <username>  --indexer-user <username>
                   --worker-root <fully-qualified local/UNC root>  --state-dir <local state directory>
@@ -354,5 +381,7 @@ public static class Cli
         candidate-level Solr plan in MariaDB. Step 9 adds read-only Solr discovery. Step 10A
         stores concrete action plans; Step 10B stores reviewed payloads. Step 11 is the first
         command that can call the Solr update API, and only with an explicit mutation id plus --apply.
+        Step 12 orchestrates collection through Step 11 preflight but deliberately keeps a manual
+        approval boundary: pipeline/pipeline-once never perform Solr update/delete/add/commit requests.
         """);
 }

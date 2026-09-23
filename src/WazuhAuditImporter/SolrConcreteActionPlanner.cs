@@ -33,12 +33,14 @@ public static class SolrConcreteActionPlanner
         var readOnly = SolrReadOnlyDiscovery.Compare(
             settings, candidateId, workerRoot, candidateFolder, schema, disk, solrDocs);
 
+        var changedRelativePaths = SolrPlanRepository.ReadChangedRelativePaths(connection, target.MutationId);
         var actions = SolrConcreteActionBuilder.Build(
             target,
             readOnly,
             disk,
             solrDocs,
-            id => client.QueryById(id));
+            id => client.QueryById(id),
+            changedRelativePaths);
 
         Console.WriteLine($"FLOSVR01 files observed : {readOnly.DiskFilesObserved}");
         Console.WriteLine($"Solr documents          : {readOnly.SolrDocumentsFound}");

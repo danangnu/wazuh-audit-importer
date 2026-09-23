@@ -12,7 +12,7 @@ public static class SolrExecutor
 
         var target = SolrExecutionRepository.ReadTarget(connection, settings, mutationId);
         var items = SolrExecutionRepository.ReadItems(connection, target);
-        var preflight = ValidateLiveState(settings, workerRoot, target, items);
+        var preflight = ValidateLiveState(settings, connection, workerRoot, target, items);
 
         Console.WriteLine("Step 11 controlled Solr execution preflight.");
         Console.WriteLine($"Target mutation: id={target.MutationId} candidate={target.CandidateId} worker_version={target.WorkerVersion}");
@@ -47,7 +47,7 @@ public static class SolrExecutor
             claimed = true;
 
             // Re-check the live filesystem and Solr after the DB claim and before the first POST.
-            ValidateLiveState(settings, workerRoot, target, items);
+            ValidateLiveState(settings, connection, workerRoot, target, items);
             Console.WriteLine("Post-claim live revalidation: PASS");
 
             using var writer = new SolrWriteClient(settings);
@@ -101,7 +101,7 @@ public static class SolrExecutor
         }
     }
 
-    public static SolrExecutionPreflight ValidateLiveState(ImportSettings settings, string workerRoot,
+    public static SolrExecutionPreflight ValidateLiveState(ImportSettings settings, MySqlConnection connection, string workerRoot,
         SolrMutationTarget target, IReadOnlyList<SolrExecutionItem> items)
     {
         foreach (var item in items) SolrExecutionSafety.ValidateReadyItem(item);
@@ -118,7 +118,8 @@ public static class SolrExecutor
         var disk = SolrReadOnlyDiscovery.CaptureDiskFiles(workerRoot, candidateFolder, settings.SolrCanonicalRoot);
         var solrDocs = client.QueryCandidate(target.CandidateId);
         var report = SolrReadOnlyDiscovery.Compare(settings, target.CandidateId, workerRoot, candidateFolder, schema, disk, solrDocs);
-        var currentActions = SolrConcreteActionBuilder.Build(target, report, disk, solrDocs, client.QueryById);
+        var changedRelativePaths = SolrPlanRepository.ReadChangedRelativePaths(connection, target.MutationId);
+        var currentActions = SolrConcreteActionBuilder.Build(target, report, disk, solrDocs, client.QueryById, changedRelativePaths);
         SolrExecutionSafety.ValidateCurrentActionPlan(items, currentActions);
 
         foreach (var item in items)
