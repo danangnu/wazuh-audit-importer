@@ -25,5 +25,14 @@
   "WorkerLeaseSeconds": 120,
   "WorkerRetrySeconds": 30,
   "WorkerPollSeconds": 5,
-  "WorkerLoopRetrySeconds": 15
+  "WorkerLoopRetrySeconds": 15,
+  "SolrBaseUrl": "http://192.168.18.22:8983/solr/AlliedSolrCore",
+  "SolrCanonicalRoot": "G:\\Candidate\\To 1189999",
+  "SolrIdField": "id",
+  "SolrCandidateField": "dbcandno",
+  "SolrPathField": "path",
+  "SolrLastUpdateField": "last_update",
+  "SolrContentField": "content",
+  "SolrTimeoutSeconds": 30,
+  "SolrMaxRows": 1000
 }

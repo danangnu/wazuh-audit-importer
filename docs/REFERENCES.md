@@ -19,3 +19,10 @@ The application enforces loopback-only DB access for this pilot. Its use of
 SslMode=Preferred is not a verified TLS guarantee and must not be copied as a
 production remote-connection policy. A remote collector requires a separately
 approved connectivity/TLS design.
+
+## Step 9 supplied project references
+
+Step 9 additionally uses the user-supplied legacy `indexingapps` source and
+`Paths.ini` as the authoritative project-specific reference for the current Solr
+endpoint, field names, path normalization and legacy document-ID behavior. The
+sensitive INI is not redistributed in this package.

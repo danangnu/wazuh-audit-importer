@@ -1,3 +1,55 @@
+# Step 9 — FLOSVR01 to AlliedSolrCore read-only discovery
+
+Step 9 adds `solr-readonly`. It uses **FLOSVR01 as the filesystem source of truth**
+and the existing Allied Solr core only as a read-only comparison target.
+
+Fixed pilot mapping:
+
+```text
+Filesystem root : \\FLOSVR01\FastTrack\Candidate\To 1189999
+Candidate       : 1180097
+Solr endpoint   : http://192.168.18.22:8983/solr/AlliedSolrCore
+Canonical root  : G:\Candidate\To 1189999
+Fields          : id, dbcandno, path, last_update, content
+```
+
+The command performs schema GETs and a candidate `GET /select` query only. It does
+not prompt for MariaDB credentials, does not change `solr_mutation_queue`, and
+contains no Solr update/add/delete/commit operations.
+
+Build first, then run:
+
+```powershell
+$root = "\\FLOSVR01\FastTrack\Candidate\To 1189999"
+
+dotnet .\src\WazuhAuditImporter\bin\Debug\net9.0\WazuhAuditImporter.dll `
+    solr-readonly `
+    --worker-root "$root" `
+    --report-dir ".\solr-readonly-reports"
+```
+
+The comparison maps FLOSVR01 relative paths to the legacy Solr path convention,
+for example:
+
+```text
+\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097\Resume.pdf
+-> G:\Candidate\To 1189999\1180097\Resume.pdf
+```
+
+It also reproduces the active legacy `genSolrId` filename algorithm for diagnostic
+ID checks. Files excluded by the active legacy hidden/DNI/OCRERROR filters are
+reported separately rather than counted as missing in Solr.
+
+Possible results are `MATCH`, `MISSING_IN_SOLR`, `STALE_IN_SOLR`, `ID_MISMATCH`,
+`DUPLICATE_SOLR_PATH`, and `SKIPPED_BY_LEGACY_FILTER`. Local duplicate generated
+legacy IDs are reported as `POSSIBLE_ID_COLLISION`.
+
+Step 9 does not use `last_update` versus file mtime to infer staleness because the
+legacy indexer sets `last_update=Now` at indexing time. Cross-candidate ID collision
+checking is deferred to a later read-only audit.
+
+See `docs/STEP9_ACCEPTANCE.md`.
+
 # Step 7.2 hotfix
 
 Fixes the continuous worker no-work path: the queue SELECT data reader is now disposed before committing the transaction. This prevents MySqlConnector from raising `This MySqlConnection is already in use` when the worker polls an empty/due-free queue. No schema changes are required.

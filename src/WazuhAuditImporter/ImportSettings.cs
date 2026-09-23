@@ -37,6 +37,18 @@ public sealed class ImportSettings
     public int WorkerPollSeconds { get; set; } = 5;
     public int WorkerLoopRetrySeconds { get; set; } = 15;
 
+    // Step 9 read-only Solr discovery. This endpoint comes from the supplied legacy
+    // Paths.ini. Step 9 permits HTTP GET requests only and never calls update APIs.
+    public string SolrBaseUrl { get; set; } = "http://192.168.18.22:8983/solr/AlliedSolrCore";
+    public string SolrCanonicalRoot { get; set; } = @"G:\Candidate\To 1189999";
+    public string SolrIdField { get; set; } = "id";
+    public string SolrCandidateField { get; set; } = "dbcandno";
+    public string SolrPathField { get; set; } = "path";
+    public string SolrLastUpdateField { get; set; } = "last_update";
+    public string SolrContentField { get; set; } = "content";
+    public int SolrTimeoutSeconds { get; set; } = 30;
+    public int SolrMaxRows { get; set; } = 1000;
+
     public static ImportSettings Load(string? path)
     {
         var settings = path is null ? new ImportSettings() :
@@ -77,6 +89,7 @@ public sealed class ImportSettings
             WorkerPollSeconds is < 2 or > 300 ||
             WorkerLoopRetrySeconds is < 5 or > 300)
             throw new FormatException("Worker timing settings are outside pilot limits.");
+        ValidateSolrReadOnly();
     }
 
     public void ValidateWorker(string workerRoot, string stateDirectory)
@@ -89,7 +102,7 @@ public sealed class ImportSettings
         if (!Path.IsPathFullyQualified(fullState))
             throw new FormatException("Worker state directory must resolve to a fully-qualified path.");
         if (CandidateIds.Length != 1 || CandidateIds[0] != "1180097")
-            throw new FormatException("Step 7 pilot remains limited to candidate 1180097.");
+            throw new FormatException("Step 9 pilot remains limited to candidate 1180097.");
     }
 
     public void ValidateCollector()
@@ -105,5 +118,22 @@ public sealed class ImportSettings
             throw new FormatException("Collector numeric settings are outside pilot limits.");
         if (!Regex.IsMatch(CollectorStreamKey ?? string.Empty, @"\A[A-Za-z0-9][A-Za-z0-9._-]{0,63}\z"))
             throw new FormatException("CollectorStreamKey is invalid.");
+    }
+
+    public void ValidateSolrReadOnly()
+    {
+        if (!Uri.TryCreate(SolrBaseUrl, UriKind.Absolute, out var uri) ||
+            uri.Scheme != Uri.UriSchemeHttp ||
+            !uri.Host.Equals("192.168.18.22", StringComparison.Ordinal) ||
+            uri.Port != 8983 ||
+            !uri.AbsolutePath.TrimEnd('/').Equals("/solr/AlliedSolrCore", StringComparison.Ordinal))
+            throw new FormatException("Step 9 pilot requires the approved read-only Solr endpoint http://192.168.18.22:8983/solr/AlliedSolrCore.");
+        if (SolrCanonicalRoot != @"G:\Candidate\To 1189999")
+            throw new FormatException(@"Step 9 pilot requires SolrCanonicalRoot=G:\Candidate\To 1189999.");
+        if (SolrIdField != "id" || SolrCandidateField != "dbcandno" || SolrPathField != "path" ||
+            SolrLastUpdateField != "last_update" || SolrContentField != "content")
+            throw new FormatException("Unexpected Solr field mapping for the Step 9 pilot.");
+        if (SolrTimeoutSeconds is < 5 or > 120 || SolrMaxRows is < 1 or > 5000)
+            throw new FormatException("Solr read-only numeric settings are outside pilot limits.");
     }
 }

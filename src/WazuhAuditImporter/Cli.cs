@@ -14,9 +14,9 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work"))
-                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work or help.");
-            string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null;
+            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly"))
+                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly or help.");
+            string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null;
             var apply = false;
             var i = 1;
             if (command == "import")
@@ -35,7 +35,7 @@ public static class Cli
                     if (command != "import") throw new FormatException("--apply is only valid with import.");
                     apply = true;
                 }
-                else if (option is "--config" or "--db-user" or "--indexer-user" or "--worker-root" or "--state-dir")
+                else if (option is "--config" or "--db-user" or "--indexer-user" or "--worker-root" or "--state-dir" or "--report-dir")
                 {
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
                         throw new FormatException("Missing value for " + option);
@@ -43,15 +43,19 @@ public static class Cli
                     else if (option == "--db-user") username = args[i++];
                     else if (option == "--indexer-user") indexerUser = args[i++];
                     else if (option == "--worker-root") workerRoot = args[i++];
-                    else stateDir = args[i++];
+                    else if (option == "--state-dir") stateDir = args[i++];
+                    else reportDir = args[i++];
                 }
                 else throw new FormatException("Unknown option: " + option);
             }
             var settings = ImportSettings.Load(config);
             Console.WriteLine("Wazuh Audit Importer - pilot");
-            Console.WriteLine(command is "worker-preflight" or "work-once" or "work"
-                ? "Candidate worker may read file metadata only. No source-file changes. No Solr writes.\n"
-                : "No Solr writes. No source-document access.\n");
+            Console.WriteLine(command switch
+            {
+                "worker-preflight" or "work-once" or "work" => "Candidate worker may read file metadata only. No source-file changes. No Solr writes.\n",
+                "solr-readonly" => "Step 9 may read FLOSVR01 file metadata and query Solr using HTTP GET only. No Solr writes.\n",
+                _ => "No Solr writes. No source-document access.\n"
+            });
 
             NormalizedAlert? alert = null;
             if (command == "import")
@@ -84,6 +88,13 @@ public static class Cli
                 if (string.IsNullOrWhiteSpace(workerRoot))
                     throw new FormatException("worker-preflight requires --worker-root <accessible candidate root>.");
                 return CandidateWorker.Preflight(settings, workerRoot);
+            }
+
+            if (command == "solr-readonly")
+            {
+                if (string.IsNullOrWhiteSpace(workerRoot))
+                    throw new FormatException("solr-readonly requires --worker-root <accessible FLOSVR01 candidate root>.");
+                return SolrReadOnlyDiscovery.Run(settings, workerRoot, reportDir);
             }
 
             if ((command is "work-once" or "work") && string.IsNullOrWhiteSpace(workerRoot))
@@ -180,6 +191,12 @@ public static class Cli
             Console.Error.WriteLine("CONFLICT: " + ex.Message);
             return 4;
         }
+        catch (SolrReadOnlyException ex)
+        {
+            Console.Error.WriteLine("SOLR READ-ONLY ERROR: " + ex.Message);
+            Console.Error.WriteLine("No Solr write was attempted. Verify read-only connectivity/schema before proceeding.");
+            return 6;
+        }
         catch (HttpRequestException ex)
         {
             Console.Error.WriteLine("INDEXER ERROR: " + ex.Message);
@@ -261,15 +278,20 @@ public static class Cli
                     --state-dir <dir>                its last completed versioned snapshot, then complete/requeue.
           work --worker-root <root>                  Continuously claim/reconcile due candidates using the same
                --state-dir <dir>                     lease/version rules; stop cleanly with Ctrl+C.
+          solr-readonly --worker-root <root>         Step 9: query the approved AlliedSolrCore using GET only and
+                                                    compare candidate 1180097 against FLOSVR01 metadata.
+                       [--report-dir <dir>]          Optionally save a local JSON report; no DB/Solr writes.
 
         Optional: --config <path.json>  --db-user <username>  --indexer-user <username>
                   --worker-root <fully-qualified local/UNC root>  --state-dir <local state directory>
+                  --report-dir <optional local Step 9 JSON report directory>
         DB password: WAZUH_DB_PASSWORD or interactive prompt.
         Indexer password: WAZUH_INDEXER_PASSWORD or interactive prompt.
         Collector default Indexer URL: https://127.0.0.1:19200 (local SSH tunnel only).
         Default DB: 127.0.0.1:3306 / wazuh_audit_poc, expected host MGMTNB08.
         Default scope: FLOSVR01 / 001 / candidate 1180097 only.
         Worker commands process only the explicit pilot queue/root. Step 8 persists a dry-run
-        candidate-level Solr plan in MariaDB, but never connects to or writes to Solr.
+        candidate-level Solr plan in MariaDB. Step 9 adds a separate read-only Solr discovery
+        command bound to FLOSVR01 + AlliedSolrCore and implements HTTP GET only; no Solr writes.
         """);
 }

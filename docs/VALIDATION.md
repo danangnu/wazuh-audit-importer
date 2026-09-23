@@ -39,3 +39,19 @@ snapshot worker. Offline self-tests include bounds for the continuous worker pol
 and loop-retry settings. Runtime acceptance still must be performed on MGMTNB08
 against the existing MariaDB queue and FLOSVR01 SMB root; this package has not
 been compiled or executed in the artifact-generation environment.
+
+## Step 9 static validation
+
+Step 9 adds a Solr read-only discovery path only. Static review confirms the new
+Solr client issues `HttpClient.GetAsync` requests and contains no POST/PUT/DELETE/
+PATCH/update/commit/optimize call. The command is handled before MariaDB
+credential prompting and does not open a database connection.
+
+The supplied legacy indexing source and Paths.ini were reviewed to derive the
+fixed pilot endpoint, field names, canonical `G:\Candidate\To 1189999` path,
+filename-based legacy ID algorithm, and legacy hidden/DNI/OCRERROR filtering.
+The sensitive Paths.ini itself is not packaged.
+
+Runtime compilation/self-tests and live read-only Solr comparison remain to be
+validated on MGMTNB08 because this packaging environment has no .NET SDK or
+network access to AlliedSolrCore.

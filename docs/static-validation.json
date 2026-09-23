@@ -8,13 +8,20 @@
   "worker_snapshot_design": "versioned_local_state_no_source_content",
   "solr_plan_schema": "new_table_only_mariadb_10_1_compatible",
   "solr_plan_design": "candidate_level_reindex_only_no_solr_schema_assumptions",
-  "offline_selftests_included": 54,
+  "offline_selftests_included": 60,
   "dotnet_build": "not_run_no_sdk_available",
   "dotnet_restore": "not_run_no_network_or_sdk",
   "offline_selftests_execution": "not_run",
   "live_MariaDB_10_1_worker": "not_run_no_connection_to_user_database",
-  "solr_connection": "not_implemented",
+  "solr_connection": "implemented_read_only_GET_only_not_run_requires_user_network",
   "solr_writes": "not_implemented",
   "continuous_worker_design": "polls_due_queue_clean_ctrl_c_retry_on_source_or_transient_db_errors",
-  "continuous_worker_runtime": "not_run_requires_MGMTNB08_MariaDB_and_FLOSVR01_SMB"
+  "continuous_worker_runtime": "not_run_requires_MGMTNB08_MariaDB_and_FLOSVR01_SMB",
+  "step9_filesystem_source": "FLOSVR01_explicit_worker_root_candidate_1180097",
+  "step9_solr_target": "http://192.168.18.22:8983/solr/AlliedSolrCore",
+  "step9_solr_canonical_root": "G:\\Candidate\\To 1189999",
+  "step9_legacy_id_algorithm": "mirrors_active_VB_genSolrId_filename_only",
+  "step9_static_http_method_check": "GET_only_in_SolrReadOnlyClient",
+  "step9_db_writes": "none_in_solr-readonly_command",
+  "step9_runtime": "not_run_requires_MGMTNB08_to_Solr_and_FLOSVR01_SMB"
 }

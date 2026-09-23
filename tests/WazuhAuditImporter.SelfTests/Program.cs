@@ -198,6 +198,53 @@ cases.Add(("Solr planner candidate mismatch rejected", () =>
     throw new Exception("Expected Solr planner candidate mismatch rejection.");
 }));
 
+
+cases.Add(("Step 9 Solr endpoint defaults accepted", () => new ImportSettings().ValidateSolrReadOnly()));
+cases.Add(("Step 9 alternate Solr endpoint rejected", () => Reject(() =>
+    new ImportSettings { SolrBaseUrl = "http://192.168.18.23:8983/solr/AlliedSolrCore" }.ValidateSolrReadOnly())));
+cases.Add(("FLOSVR01 relative path maps to legacy G drive root", () =>
+{
+    var mapped = SolrPathMapper.MapRelativeToCanonicalRoot(
+        @"G:\Candidate\To 1189999", @"1180097\Resume.pdf");
+    Assert(mapped == @"G:\Candidate\To 1189999\1180097\Resume.pdf", mapped);
+}));
+cases.Add(("legacy Solr ID mirrors active filename algorithm", () =>
+{
+    Assert(SolrPathMapper.GenerateLegacySolrId(@"G:\Candidate\To 1189999\1180097\Resume.pdf") == "resumepdf");
+    Assert(SolrPathMapper.GenerateLegacySolrId(@"G:\Candidate\To 1189999\1180097\A_B-C 1.docx") == "a-bc-1docx");
+}));
+cases.Add(("legacy filename filter excludes DNI and OCRERROR tokens", () =>
+{
+    Assert(!SolrPathMapper.LegacyEligibility(@"C:\x\Candidate DNI.pdf", FileAttributes.Normal).Eligible);
+    Assert(!SolrPathMapper.LegacyEligibility(@"C:\x\OCRERROR_test.pdf", FileAttributes.Normal).Eligible);
+    Assert(SolrPathMapper.LegacyEligibility(@"C:\x\Resume.pdf", FileAttributes.Normal).Eligible);
+}));
+cases.Add(("Step 9 comparison finds match missing stale and local ID collision", () =>
+{
+    var schema = new SolrSchemaInfo("id", new Dictionary<string, SolrFieldInfo>(), "test");
+    var disk = new List<DiskSolrFile>
+    {
+        new(@"resume.pdf", @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097\resume.pdf",
+            @"G:\Candidate\To 1189999\1180097\resume.pdf", "resumepdf", 10, DateTime.UtcNow, true, null),
+        new(@"sub\resume.pdf", @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097\sub\resume.pdf",
+            @"G:\Candidate\To 1189999\1180097\sub\resume.pdf", "resumepdf", 11, DateTime.UtcNow, true, null),
+        new(@"missing.txt", @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097\missing.txt",
+            @"G:\Candidate\To 1189999\1180097\missing.txt", "missingtxt", 1, DateTime.UtcNow, true, null)
+    };
+    var solr = new List<SolrReadOnlyDocument>
+    {
+        new("resumepdf", "1180097", @"G:\Candidate\To 1189999\1180097\resume.pdf", null),
+        new("oldtxt", "1180097", @"G:\Candidate\To 1189999\1180097\old.txt", null)
+    };
+    var report = SolrReadOnlyDiscovery.Compare(settings, "1180097",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097", schema, disk, solr);
+    Assert(report.Comparisons.Any(x => x.Status == "MATCH" && x.CanonicalPath.EndsWith("resume.pdf", StringComparison.OrdinalIgnoreCase)));
+    Assert(report.Comparisons.Any(x => x.Status == "MISSING_IN_SOLR"));
+    Assert(report.Comparisons.Any(x => x.Status == "STALE_IN_SOLR"));
+    Assert(report.LocalLegacyIdCollisions.Count == 1 && report.LocalLegacyIdCollisions[0].LegacyId == "resumepdf");
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -205,5 +252,5 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9 mapping tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;

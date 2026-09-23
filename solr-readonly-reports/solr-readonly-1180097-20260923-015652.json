@@ -1,0 +1,35 @@
+{
+  "CandidateId": "1180097",
+  "WorkerRoot": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999",
+  "AccessibleCandidateFolder": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999\\1180097",
+  "CanonicalRoot": "G:\\Candidate\\To 1189999",
+  "SolrBaseUrl": "http://192.168.18.22:8983/solr/AlliedSolrCore",
+  "UniqueKey": "id",
+  "SolrVersion": null,
+  "DiskFilesObserved": 1,
+  "DiskFilesEligible": 1,
+  "DiskFilesSkippedByLegacyFilter": 0,
+  "SolrDocumentsFound": 1,
+  "Comparisons": [
+    {
+      "Status": "STALE_IN_SOLR",
+      "CanonicalPath": "G:\\Candidate\\To 1189999\\1180097\\1180097 2025 08 22 Choi, Arthur Resume.pdf",
+      "RelativePath": null,
+      "ExpectedLegacyId": null,
+      "SolrId": "1180097-2025-08-22-choi-arthur-resume",
+      "SolrLastUpdate": "2025-08-22T00:00:00+00:00",
+      "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+    },
+    {
+      "Status": "MISSING_IN_SOLR",
+      "CanonicalPath": "G:\\Candidate\\To 1189999\\1180097\\2026 09 16 001.txt",
+      "RelativePath": "2026 09 16 001.txt",
+      "ExpectedLegacyId": "2026-09-16-001txt",
+      "SolrId": null,
+      "SolrLastUpdate": null,
+      "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+    }
+  ],
+  "LocalLegacyIdCollisions": [],
+  "GeneratedAtUtc": "2026-09-23T01:56:52.8833163Z"
+}
