@@ -14,8 +14,8 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly"))
-                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly or help.");
+            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-plan-actions"))
+                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-plan-actions or help.");
             string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null;
             var apply = false;
             var i = 1;
@@ -54,6 +54,7 @@ public static class Cli
             {
                 "worker-preflight" or "work-once" or "work" => "Candidate worker may read file metadata only. No source-file changes. No Solr writes.\n",
                 "solr-readonly" => "Step 9 may read FLOSVR01 file metadata and query Solr using HTTP GET only. No Solr writes.\n",
+                "solr-plan-actions" => "Step 10A reads FLOSVR01 metadata and Solr using GET, then stores concrete dry-run actions in MariaDB. No Solr writes.\n",
                 _ => "No Solr writes. No source-document access.\n"
             });
 
@@ -96,6 +97,9 @@ public static class Cli
                     throw new FormatException("solr-readonly requires --worker-root <accessible FLOSVR01 candidate root>.");
                 return SolrReadOnlyDiscovery.Run(settings, workerRoot, reportDir);
             }
+
+            if (command == "solr-plan-actions" && string.IsNullOrWhiteSpace(workerRoot))
+                throw new FormatException("solr-plan-actions requires --worker-root <accessible FLOSVR01 candidate root>.");
 
             if ((command is "work-once" or "work") && string.IsNullOrWhiteSpace(workerRoot))
                 throw new FormatException($"{command} requires --worker-root <accessible candidate root>.");
@@ -143,6 +147,11 @@ public static class Cli
             using var connection = AuditRepository.Open(settings, username, password);
             password = string.Empty;
 
+            if (command == "solr-plan-actions")
+            {
+                return SolrConcreteActionPlanner.Run(settings, connection, workerRoot!, reportDir);
+            }
+
             if (command == "check-db")
             {
                 using var counts = new MySqlCommand("""
@@ -150,11 +159,12 @@ public static class Cli
                         (SELECT COUNT(*) FROM wazuh_audit_poc.audit_event),
                         (SELECT COUNT(*) FROM wazuh_audit_poc.candidate_work_queue),
                         (SELECT COUNT(*) FROM wazuh_audit_poc.collector_checkpoint),
-                        (SELECT COUNT(*) FROM wazuh_audit_poc.solr_mutation_queue);
+                        (SELECT COUNT(*) FROM wazuh_audit_poc.solr_mutation_queue),
+                        (SELECT COUNT(*) FROM wazuh_audit_poc.solr_mutation_action);
                     """, connection);
                 using var reader = counts.ExecuteReader();
                 reader.Read();
-                Console.WriteLine($"Rows: audit_event={reader.GetValue(0)}; candidate_work_queue={reader.GetValue(1)}; collector_checkpoint={reader.GetValue(2)}; solr_mutation_queue={reader.GetValue(3)}");
+                Console.WriteLine($"Rows: audit_event={reader.GetValue(0)}; candidate_work_queue={reader.GetValue(1)}; collector_checkpoint={reader.GetValue(2)}; solr_mutation_queue={reader.GetValue(3)}; solr_mutation_action={reader.GetValue(4)}");
                 Console.WriteLine("Database check completed. No application rows changed.");
                 return 0;
             }
@@ -190,6 +200,12 @@ public static class Cli
         {
             Console.Error.WriteLine("CONFLICT: " + ex.Message);
             return 4;
+        }
+        catch (SolrConcreteActionException ex)
+        {
+            Console.Error.WriteLine("SOLR PLAN ERROR: " + ex.Message);
+            Console.Error.WriteLine("No Solr write was attempted. No concrete action rows should be committed on a blocked plan.");
+            return 7;
         }
         catch (SolrReadOnlyException ex)
         {
@@ -281,6 +297,8 @@ public static class Cli
           solr-readonly --worker-root <root>         Step 9: query the approved AlliedSolrCore using GET only and
                                                     compare candidate 1180097 against FLOSVR01 metadata.
                        [--report-dir <dir>]          Optionally save a local JSON report; no DB/Solr writes.
+          solr-plan-actions --worker-root <root>     Step 10A: expand the latest completed candidate reindex plan
+                           [--report-dir <dir>]      into concrete delete/index action rows. Solr remains read-only.
 
         Optional: --config <path.json>  --db-user <username>  --indexer-user <username>
                   --worker-root <fully-qualified local/UNC root>  --state-dir <local state directory>
@@ -291,7 +309,8 @@ public static class Cli
         Default DB: 127.0.0.1:3306 / wazuh_audit_poc, expected host MGMTNB08.
         Default scope: FLOSVR01 / 001 / candidate 1180097 only.
         Worker commands process only the explicit pilot queue/root. Step 8 persists a dry-run
-        candidate-level Solr plan in MariaDB. Step 9 adds a separate read-only Solr discovery
-        command bound to FLOSVR01 + AlliedSolrCore and implements HTTP GET only; no Solr writes.
+        candidate-level Solr plan in MariaDB. Step 9 adds read-only Solr discovery. Step 10A
+        stores concrete action plans in solr_mutation_action only after read-only Solr checks;
+        no Solr add/delete/update/commit endpoint is called.
         """);
 }

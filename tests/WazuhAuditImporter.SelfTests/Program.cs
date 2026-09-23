@@ -245,6 +245,119 @@ cases.Add(("Step 9 comparison finds match missing stale and local ID collision",
     Assert(report.LocalLegacyIdCollisions.Count == 1 && report.LocalLegacyIdCollisions[0].LegacyId == "resumepdf");
 }));
 
+
+cases.Add(("Step 10A missing+stale becomes delete then index", () =>
+{
+    var schema = new SolrSchemaInfo("id", new Dictionary<string, SolrFieldInfo>(), "test");
+    var disk = new List<DiskSolrFile>
+    {
+        new(@"new.txt", @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097\new.txt",
+            @"G:\Candidate\To 1189999\1180097\new.txt", "newtxt", 12,
+            new DateTime(2026,9,23,1,2,3,DateTimeKind.Utc), true, null)
+    };
+    var solr = new List<SolrReadOnlyDocument>
+    {
+        new("oldpdf", "1180097", @"G:\Candidate\To 1189999\1180097\old.pdf", null)
+    };
+    var report = SolrReadOnlyDiscovery.Compare(settings, "1180097",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097", schema, disk, solr);
+    var target = new SolrMutationTarget(3, settings.SourceInstance, settings.AgentId, "1180097",
+        22, "reindex_candidate", "planned", "completed", 22, 22);
+    var actions = SolrConcreteActionBuilder.Build(target, report, disk, solr, _ => []);
+    Assert(actions.Count == 2);
+    Assert(actions[0].ActionType == "delete_document" && actions[0].SolrDocumentId == "oldpdf");
+    Assert(actions[1].ActionType == "index_document" && actions[1].SolrDocumentId == "newtxt");
+    Assert(actions[0].ActionOrder == 1 && actions[1].ActionOrder == 2);
+}));
+
+cases.Add(("Step 10A cross-candidate ID collision blocks planning", () =>
+{
+    var schema = new SolrSchemaInfo("id", new Dictionary<string, SolrFieldInfo>(), "test");
+    var disk = new List<DiskSolrFile>
+    {
+        new(@"resume.pdf", @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097\resume.pdf",
+            @"G:\Candidate\To 1189999\1180097\resume.pdf", "resumepdf", 12,
+            DateTime.UtcNow, true, null)
+    };
+    var report = SolrReadOnlyDiscovery.Compare(settings, "1180097",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097", schema, disk, []);
+    var target = new SolrMutationTarget(3, settings.SourceInstance, settings.AgentId, "1180097",
+        22, "reindex_candidate", "planned", "completed", 22, 22);
+    try
+    {
+        SolrConcreteActionBuilder.Build(target, report, disk, [], _ =>
+            [new SolrReadOnlyDocument("resumepdf", "9999999", @"G:\Candidate\To 9999999\9999999\resume.pdf", null)]);
+    }
+    catch (SolrConcreteActionException) { return; }
+    throw new Exception("Expected cross-candidate legacy ID collision to block planning.");
+}));
+
+cases.Add(("Step 10A same-candidate stale ID may be deleted before reindex", () =>
+{
+    var schema = new SolrSchemaInfo("id", new Dictionary<string, SolrFieldInfo>(), "test");
+    var disk = new List<DiskSolrFile>
+    {
+        new(@"moved\resume.pdf", @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097\moved\resume.pdf",
+            @"G:\Candidate\To 1189999\1180097\moved\resume.pdf", "resumepdf", 12,
+            DateTime.UtcNow, true, null)
+    };
+    var old = new SolrReadOnlyDocument("resumepdf", "1180097",
+        @"G:\Candidate\To 1189999\1180097\old\resume.pdf", null);
+    var solr = new List<SolrReadOnlyDocument> { old };
+    var report = SolrReadOnlyDiscovery.Compare(settings, "1180097",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097", schema, disk, solr);
+    var target = new SolrMutationTarget(4, settings.SourceInstance, settings.AgentId, "1180097",
+        23, "reindex_candidate", "planned", "completed", 23, 23);
+    var actions = SolrConcreteActionBuilder.Build(target, report, disk, solr, _ => [old]);
+    Assert(actions.Count == 2 && actions[0].ActionType == "delete_document" && actions[1].ActionType == "index_document");
+    Assert(actions[0].SolrDocumentId == "resumepdf" && actions[1].SolrDocumentId == "resumepdf");
+}));
+
+cases.Add(("Step 10A ID mismatch blocks concrete actions", () =>
+{
+    var schema = new SolrSchemaInfo("id", new Dictionary<string, SolrFieldInfo>(), "test");
+    var disk = new List<DiskSolrFile>
+    {
+        new(@"a.txt", @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097\a.txt",
+            @"G:\Candidate\To 1189999\1180097\a.txt", "atxt", 1, DateTime.UtcNow, true, null)
+    };
+    var solr = new List<SolrReadOnlyDocument>
+    {
+        new("different-id", "1180097", @"G:\Candidate\To 1189999\1180097\a.txt", null)
+    };
+    var report = SolrReadOnlyDiscovery.Compare(settings, "1180097",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097", schema, disk, solr);
+    var target = new SolrMutationTarget(3, settings.SourceInstance, settings.AgentId, "1180097",
+        22, "reindex_candidate", "planned", "completed", 22, 22);
+    try { SolrConcreteActionBuilder.Build(target, report, disk, solr, _ => []); }
+    catch (SolrConcreteActionException) { return; }
+    throw new Exception("Expected ID mismatch to block planning.");
+}));
+
+cases.Add(("Step 10A action identity is deterministic", () =>
+{
+    var schema = new SolrSchemaInfo("id", new Dictionary<string, SolrFieldInfo>(), "test");
+    var disk = new List<DiskSolrFile>
+    {
+        new(@"a.txt", @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097\a.txt",
+            @"G:\Candidate\To 1189999\1180097\a.txt", "atxt", 1,
+            new DateTime(2026,9,23,1,0,0,DateTimeKind.Utc), true, null)
+    };
+    var report = SolrReadOnlyDiscovery.Compare(settings, "1180097",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999",
+        @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180097", schema, disk, []);
+    var target = new SolrMutationTarget(3, settings.SourceInstance, settings.AgentId, "1180097",
+        22, "reindex_candidate", "planned", "completed", 22, 22);
+    var a = SolrConcreteActionBuilder.Build(target, report, disk, [], _ => []);
+    var b = SolrConcreteActionBuilder.Build(target, report, disk, [], _ => []);
+    Assert(a.Single().IdempotencyKey == b.Single().IdempotencyKey);
+    Assert(a.Single().IdempotencyKey.Length == 64);
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -252,5 +365,5 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9 mapping tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A planning tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;

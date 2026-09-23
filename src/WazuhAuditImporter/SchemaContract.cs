@@ -77,6 +77,30 @@ public static class SchemaContract
             new("updated_at_utc", "datetime", null, false, null, null, false),
             new("applied_at_utc", "datetime", null, true, null, null, false),
             new("last_error", "text", null, true, null, null, false)
+        ],
+        ["solr_mutation_action"] = [
+            new("action_id", "bigint", null, false, null, null, true),
+            new("mutation_id", "bigint", null, false, null, null, false),
+            new("source_instance", "varchar", 64, false, "ascii_bin", null, false),
+            new("agent_id", "varchar", 32, false, "ascii_bin", null, false),
+            new("candidate_id", "varchar", 32, false, "ascii_bin", null, false),
+            new("worker_version", "bigint", null, false, null, null, false),
+            new("action_order", "int", null, false, null, null, false),
+            new("action_type", "enum", null, false, null, "enum('delete_document','index_document')", false),
+            new("status", "enum", null, false, null, "enum('planned','processing','applied','failed','skipped')", false),
+            new("reason", "varchar", 64, false, "ascii_bin", null, false),
+            new("solr_document_id", "varchar", 255, false, null, null, false),
+            new("canonical_path", "text", null, false, null, null, false),
+            new("source_file_path", "text", null, true, null, null, false),
+            new("source_file_length", "bigint", null, true, null, null, false),
+            new("source_file_last_write_utc", "datetime", null, true, null, null, false),
+            new("solr_last_update_utc", "datetime", null, true, null, null, false),
+            new("idempotency_key", "char", 64, false, "ascii_bin", null, false),
+            new("attempt_count", "int", null, false, null, null, false),
+            new("planned_at_utc", "datetime", null, false, null, null, false),
+            new("updated_at_utc", "datetime", null, false, null, null, false),
+            new("applied_at_utc", "datetime", null, true, null, null, false),
+            new("last_error", "text", null, true, null, null, false)
         ]
     };
 
@@ -146,6 +170,10 @@ public static class SchemaContract
         VerifyUnique(connection, "solr_mutation_queue", "uq_solr_plan_version",
             ["source_instance", "agent_id", "candidate_id", "worker_version"]);
         VerifyUnique(connection, "solr_mutation_queue", "uq_solr_plan_idempotency",
+            ["idempotency_key"]);
+        VerifyUnique(connection, "solr_mutation_action", "uq_solr_action_order",
+            ["mutation_id", "action_order"]);
+        VerifyUnique(connection, "solr_mutation_action", "uq_solr_action_idempotency",
             ["idempotency_key"]);
         Console.WriteLine("Schema guard: required columns, InnoDB engines and deduplication indexes matched.");
     }

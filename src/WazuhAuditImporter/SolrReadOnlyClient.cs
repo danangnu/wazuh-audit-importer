@@ -133,6 +133,42 @@ public sealed class SolrReadOnlyClient : IDisposable
         return result;
     }
 
+    public IReadOnlyList<SolrReadOnlyDocument> QueryById(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id) || id.Length > 255 || id.Any(char.IsControl))
+            throw new ArgumentException("Solr ID is invalid.", nameof(id));
+
+        var parameters = new Dictionary<string, string>
+        {
+            ["q"] = $"{{!term f={_settings.SolrIdField}}}{id}",
+            ["fl"] = string.Join(',', _settings.SolrIdField, _settings.SolrCandidateField,
+                _settings.SolrPathField, _settings.SolrLastUpdateField),
+            ["rows"] = "2",
+            ["wt"] = "json"
+        };
+        using var json = GetJson("select?" + BuildQuery(parameters));
+        if (!json.RootElement.TryGetProperty("response", out var response) || response.ValueKind != JsonValueKind.Object)
+            throw new SolrReadOnlyException("Solr ID lookup response did not contain an object named 'response'.");
+        var numFound = ReadRequiredInt64(response, "numFound");
+        if (numFound > 1)
+            throw new SolrReadOnlyException($"Unique-key lookup for id '{id}' returned {numFound} documents.");
+        if (!response.TryGetProperty("docs", out var docs) || docs.ValueKind != JsonValueKind.Array)
+            throw new SolrReadOnlyException("Solr ID lookup response did not contain a docs array.");
+
+        var result = new List<SolrReadOnlyDocument>();
+        foreach (var item in docs.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+                throw new SolrReadOnlyException("Solr ID lookup docs array contained a non-object value.");
+            result.Add(new SolrReadOnlyDocument(
+                ReadFlexibleRequiredScalar(item, _settings.SolrIdField),
+                ReadFlexibleRequiredScalar(item, _settings.SolrCandidateField),
+                ReadFlexibleRequiredScalar(item, _settings.SolrPathField),
+                ReadOptionalDate(item, _settings.SolrLastUpdateField)));
+        }
+        return result;
+    }
+
     private JsonDocument GetJson(string relative)
     {
         var url = _settings.SolrBaseUrl.TrimEnd('/') + "/" + relative.TrimStart('/');

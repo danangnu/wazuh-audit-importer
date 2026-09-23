@@ -22,3 +22,5 @@ Thumbs.db
 
 worker-state/
 **/worker-state/
+solr-readonly-reports/
+solr-action-reports/

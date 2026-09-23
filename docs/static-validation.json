@@ -8,7 +8,7 @@
   "worker_snapshot_design": "versioned_local_state_no_source_content",
   "solr_plan_schema": "new_table_only_mariadb_10_1_compatible",
   "solr_plan_design": "candidate_level_reindex_only_no_solr_schema_assumptions",
-  "offline_selftests_included": 60,
+  "offline_selftests_included": 65,
   "dotnet_build": "not_run_no_sdk_available",
   "dotnet_restore": "not_run_no_network_or_sdk",
   "offline_selftests_execution": "not_run",
@@ -23,5 +23,12 @@
   "step9_legacy_id_algorithm": "mirrors_active_VB_genSolrId_filename_only",
   "step9_static_http_method_check": "GET_only_in_SolrReadOnlyClient",
   "step9_db_writes": "none_in_solr-readonly_command",
-  "step9_runtime": "not_run_requires_MGMTNB08_to_Solr_and_FLOSVR01_SMB"
+  "step9_runtime": "not_run_requires_MGMTNB08_to_Solr_and_FLOSVR01_SMB",
+  "step10a_action_table": "solr_mutation_action_new_table_only_mariadb_10_1_compatible",
+  "step10a_solr_access": "read_only_GET_only_via_existing_SolrReadOnlyClient",
+  "step10a_db_writes": "idempotent_dry_run_action_plan_rows_only",
+  "step10a_collision_guards": "blocks_local_ID_collision_cross_candidate_ID_collision_ID_mismatch_duplicate_path",
+  "step10a_action_order": "delete_before_index",
+  "step10a_solr_writes": "not_implemented",
+  "step10a_runtime": "not_run_requires_user_MariaDB_Solr_and_FLOSVR01_SMB"
 }
