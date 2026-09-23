@@ -34,6 +34,13 @@ public sealed record PipelineDecisionResult(
     PipelineMutationDisposition Disposition,
     string Detail);
 
+public sealed record PipelineCandidateCycleSummary(
+    string CandidateId,
+    PipelineMutationDisposition Disposition,
+    ulong? MutationId,
+    ulong? WorkerVersion,
+    string Detail);
+
 public sealed record PipelineCycleSummary(
     long Cycle,
     int CollectorSeen,
@@ -46,16 +53,26 @@ public sealed record PipelineCycleSummary(
     ulong? MutationId,
     ulong? WorkerVersion,
     string Detail,
+    IReadOnlyList<PipelineCandidateCycleSummary> Candidates,
     DateTime CompletedAtUtc);
+
+public sealed record PipelineCandidateLocalState(
+    string CandidateId,
+    string Stage,
+    ulong? MutationId,
+    ulong? WorkerVersion,
+    string Detail);
 
 public sealed record PipelineLocalState(
     int SchemaVersion,
     string SourceInstance,
     string AgentId,
     string CandidateId,
+    string[] CandidateIds,
     long Cycle,
     string Stage,
     ulong? MutationId,
     ulong? WorkerVersion,
     string Detail,
+    IReadOnlyList<PipelineCandidateLocalState> Candidates,
     DateTime UpdatedAtUtc);

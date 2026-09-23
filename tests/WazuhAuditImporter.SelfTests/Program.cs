@@ -658,6 +658,27 @@ cases.Add(("Step 14A lookup cap blocks uncontrolled audit size", () =>
     throw new Exception("Expected Step 14A lookup-cap rejection.");
 }));
 
+
+cases.Add(("Step 14B explicit five-candidate active allowlist accepted", () =>
+{
+    var multi = new ImportSettings { CandidateIds = ["1180000", "1180001", "1180002", "1180003", "1180097"] };
+    multi.Validate();
+}));
+cases.Add(("Step 14B active allowlist rejects more than five candidates", () => Reject(() =>
+    new ImportSettings { CandidateIds = ["1180000", "1180001", "1180002", "1180003", "1180004", "1180097"] }.Validate())));
+cases.Add(("Step 14B active allowlist rejects duplicate candidate", () => Reject(() =>
+    new ImportSettings { CandidateIds = ["1180000", "1180000"] }.Validate())));
+cases.Add(("Step 14B parser accepts an explicitly allowlisted second candidate", () =>
+{
+    var multi = new ImportSettings { CandidateIds = ["1180001", "1180097"] };
+    var changed = Change(x => x["syscheck"]!["path"] =
+        @"c:\shares-dfs\fasttrack\candidate\to 1189999\1180001\DNI_WAZUH_STEP14B_TEST.txt");
+    var parsed = AlertParser.Parse(changed, multi).Alert;
+    Assert(parsed is not null && parsed.CandidateId == "1180001");
+}));
+cases.Add(("Step 14B candidate guard rejects IDs outside active allowlist", () => Reject(() =>
+    new ImportSettings { CandidateIds = ["1180000", "1180097"] }.ValidateAllowedCandidate("1180002"))));
+
 cases.Add(("Step 12 orchestration defaults accepted", () => new ImportSettings().Validate()));
 cases.Add(("Step 12 orchestration poll interval bounded", () => Reject(() => new ImportSettings { OrchestratorPollSeconds = 1 }.Validate())));
 cases.Add(("Step 12 orchestration worker drain bounded", () => Reject(() => new ImportSettings { OrchestratorMaxWorkerItemsPerCycle = 0 }.Validate())));
@@ -731,5 +752,5 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;

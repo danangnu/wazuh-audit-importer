@@ -16,7 +16,7 @@ public static class Cli
             var command = args[0];
             if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-collision-audit" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "pipeline-once" or "pipeline"))
                 throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-collision-audit, solr-plan-actions, solr-build-payloads, solr-execute, pipeline-once, pipeline or help.");
-            string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null, candidateIdsCsv = null;
+            string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null, candidateIdsCsv = null, candidateId = null;
             ulong? mutationId = null;
             var candidateLimit = SolrCollisionAudit.DefaultCandidateLimit;
             var maxIdLookups = SolrCollisionAudit.DefaultMaxIdLookups;
@@ -62,6 +62,14 @@ public static class Cli
                         throw new FormatException("--candidate-ids requires a comma-separated value.");
                     candidateIdsCsv = args[i++];
                 }
+                else if (option == "--candidate-id")
+                {
+                    if (command is not ("solr-plan-actions" or "solr-build-payloads"))
+                        throw new FormatException("--candidate-id is only valid with solr-plan-actions or solr-build-payloads.");
+                    if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
+                        throw new FormatException("--candidate-id requires a candidate ID value.");
+                    candidateId = args[i++];
+                }
                 else if (option is "--config" or "--db-user" or "--indexer-user" or "--worker-root" or "--state-dir" or "--report-dir")
                 {
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
@@ -87,7 +95,9 @@ public static class Cli
                 "solr-execute" => apply
                     ? "Step 11 controlled Solr execution. --apply MAY write reviewed actions to the approved AlliedSolrCore after safety gates pass.\n"
                     : "Step 11 preflight only. Reads DB/source/Solr state; no Solr or MariaDB status writes.\n",
-                "pipeline-once" or "pipeline" => "Step 12 approval-gated orchestration. May collect events, reconcile metadata, read source content, store plans/payloads and run Step 11 preflight. NEVER writes to Solr.\n",
+                "pipeline-once" or "pipeline" => settings.CandidateIds.Length > 1
+                    ? "Step 14B approval-gated multi-candidate orchestration. Explicit allowlist only; NEVER writes to Solr.\n"
+                    : "Step 12 approval-gated orchestration. May collect events, reconcile metadata, read source content, store plans/payloads and run Step 11 preflight. NEVER writes to Solr.\n",
                 _ => "No Solr writes. No source-document access.\n"
             });
 
@@ -218,11 +228,15 @@ public static class Cli
 
             if (command == "solr-plan-actions")
             {
-                return SolrConcreteActionPlanner.Run(settings, connection, workerRoot!, reportDir);
+                return candidateId is null
+                    ? SolrConcreteActionPlanner.Run(settings, connection, workerRoot!, reportDir)
+                    : SolrConcreteActionPlanner.Run(settings, connection, workerRoot!, reportDir, candidateId);
             }
             if (command == "solr-build-payloads")
             {
-                return SolrPayloadPlanner.Run(settings, connection, workerRoot!, reportDir);
+                return candidateId is null
+                    ? SolrPayloadPlanner.Run(settings, connection, workerRoot!, reportDir)
+                    : SolrPayloadPlanner.Run(settings, connection, workerRoot!, reportDir, candidateId);
             }
             if (command == "solr-execute")
             {
@@ -378,34 +392,36 @@ public static class Cli
                                                     import/deduplicate it, then advance checkpoint.
           collect                                   Continuously poll scoped FIM alerts, retry transient
                                                     failures, and stop cleanly with Ctrl+C.
-          worker-preflight --worker-root <root>      Verify metadata read access for the allowed candidate;
+          worker-preflight --worker-root <root>      Verify metadata read access for every explicitly allowed candidate;
                                                     no DB writes and no queue claim.
           work-once --worker-root <root>             Claim one due candidate, reconcile file metadata against
                     --state-dir <dir>                its last completed versioned snapshot, then complete/requeue.
           work --worker-root <root>                  Continuously claim/reconcile due candidates using the same
                --state-dir <dir>                     lease/version rules; stop cleanly with Ctrl+C.
           solr-readonly --worker-root <root>         Step 9: query the approved AlliedSolrCore using GET only and
-                                                    compare candidate 1180097 against FLOSVR01 metadata.
+                                                    compare every explicitly allowed candidate against FLOSVR01 metadata.
                        [--report-dir <dir>]          Optionally save a local JSON report; no DB/Solr writes.
           solr-collision-audit --worker-root <root> Step 14A: metadata-only controlled multi-candidate audit of the
                                [--candidate-limit N] filename-derived legacy Solr IDs plus GET-only current ID ownership.
                                [--candidate-ids a,b] Explicit IDs override automatic controlled selection.
                                [--max-id-lookups N] Default 1000; hard cap 5000 unique-key GETs per run.
                                [--report-dir <dir>]  Save JSON + CSV findings. No MariaDB connection or Solr writes.
-          solr-plan-actions --worker-root <root>     Step 10A: expand the latest completed candidate reindex plan
-                           [--report-dir <dir>]      into concrete delete/index action rows. Solr remains read-only.
+          solr-plan-actions --worker-root <root>     Step 10A: expand a latest completed candidate reindex plan
+                           [--candidate-id <id>]     into concrete delete/index rows. Required when config has >1 candidate.
+                           [--report-dir <dir>]      Solr remains read-only.
           solr-build-payloads --worker-root <root>  Step 10B: build/stash exact reviewed delete/index JSON payloads.
+                              [--candidate-id <id>] Required when config has >1 candidate.
                               [--report-dir <dir>]  Reads source content; never posts to Solr.
           solr-execute --mutation-id <id>           Step 11 preflight: revalidate exact mutation, payload/source hashes,
                        --worker-root <root>          and current Solr/disk state. No writes without --apply.
           solr-execute --mutation-id <id>           Step 11 controlled execution after all gates pass.
                        --worker-root <root> --apply  Posts reviewed actions, explicit commit, GET verification, DB status update.
-          pipeline-once --worker-root <root>         Step 12: collect once, drain due worker items, then idempotently
-                        --state-dir <dir>            prepare Step 10A/10B and run Step 11 PRE-FLIGHT only. Never writes Solr.
+          pipeline-once --worker-root <root>         Step 12/14B: collect once, drain due allowlisted work, then
+                        --state-dir <dir>            prepare each candidate independently and run Step 11 PRE-FLIGHT only.
                         [--report-dir <dir>]
-          pipeline --worker-root <root>              Step 12 continuous approval-gated orchestration. Single-instance
-                   --state-dir <dir>                 file lock, retries, persistent local status, Ctrl+C clean stop.
-                   [--report-dir <dir>]              It NEVER calls the Solr update API; apply remains a separate command.
+          pipeline --worker-root <root>              Step 12/14B continuous approval-gated orchestration. With the
+                   --state-dir <dir>                 Step 14B config, up to five explicit candidates are independent.
+                   [--report-dir <dir>]              It NEVER calls the Solr update API; apply remains separate per mutation.
 
         Optional: --config <path.json>  --db-user <username>  --indexer-user <username>
                   --worker-root <fully-qualified local/UNC root>  --state-dir <local state directory>
@@ -415,11 +431,14 @@ public static class Cli
         Collector default Indexer URL: https://127.0.0.1:19200 (local SSH tunnel only).
         Default DB: 127.0.0.1:3306 / wazuh_audit_poc, expected host MGMTNB08.
         Default scope: FLOSVR01 / 001 / candidate 1180097 only.
+        Step 14B config: importer.step14b.pilot.json explicitly allows only
+        1180000,1180001,1180002,1180003,1180097 (maximum active allowlist = 5).
         Worker commands process only the explicit pilot queue/root. Step 8 persists a dry-run
         candidate-level Solr plan in MariaDB. Step 9 adds read-only Solr discovery. Step 10A
         stores concrete action plans; Step 10B stores reviewed payloads. Step 11 is the first
         command that can call the Solr update API, and only with an explicit mutation id plus --apply.
-        Step 12 orchestrates collection through Step 11 preflight but deliberately keeps a manual
+        Step 12/14B orchestrates collection through Step 11 preflight but deliberately keeps a manual
         approval boundary: pipeline/pipeline-once never perform Solr update/delete/add/commit requests.
+        In Step 14B, each allowlisted candidate has its own mutation/approval state.
         """);
 }

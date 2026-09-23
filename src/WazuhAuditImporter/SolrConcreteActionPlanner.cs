@@ -11,9 +11,21 @@ public static class SolrConcreteActionPlanner
         string workerRoot,
         string? reportDirectory)
     {
+        if (settings.CandidateIds.Length != 1)
+            throw new FormatException("solr-plan-actions requires --candidate-id when the active allowlist contains multiple candidates.");
+        return Run(settings, connection, workerRoot, reportDirectory, settings.CandidateIds[0]);
+    }
+
+    public static int Run(
+        ImportSettings settings,
+        MySqlConnection connection,
+        string workerRoot,
+        string? reportDirectory,
+        string candidateId)
+    {
         settings.ValidateWorker(workerRoot, Path.GetFullPath("worker-state"));
         settings.ValidateSolrReadOnly();
-        var candidateId = settings.CandidateIds.Single();
+        settings.ValidateAllowedCandidate(candidateId);
         var target = SolrConcreteActionRepository.ReadLatestTarget(connection, settings, candidateId);
 
         Console.WriteLine("Step 10A concrete Solr action planning - DRY RUN ONLY.");

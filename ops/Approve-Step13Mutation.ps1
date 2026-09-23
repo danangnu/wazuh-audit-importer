@@ -13,11 +13,22 @@ if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
     throw "Pipeline state file not found: $statePath"
 }
 $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
-if ([string]$state.Stage -ne 'ReadyForApproval') {
-    throw "Pipeline is not ReadyForApproval. Current stage: $($state.Stage)."
-}
-if ([long]$state.MutationId -ne $MutationId) {
-    throw "Requested mutation $MutationId does not match current ReadyForApproval mutation $($state.MutationId)."
+$approvedState = $null
+if ($null -ne $state.Candidates) {
+    $approvedState = @($state.Candidates) | Where-Object {
+        [string]$_.Stage -eq 'ReadyForApproval' -and [long]$_.MutationId -eq $MutationId
+    } | Select-Object -First 1
+    if ($null -eq $approvedState) {
+        $ready = @($state.Candidates) | Where-Object { [string]$_.Stage -eq 'ReadyForApproval' } | ForEach-Object { [string]$_.MutationId }
+        throw "Mutation $MutationId is not currently ReadyForApproval. Ready mutation(s): $($ready -join ',')."
+    }
+} else {
+    if ([string]$state.Stage -ne 'ReadyForApproval') {
+        throw "Pipeline is not ReadyForApproval. Current stage: $($state.Stage)."
+    }
+    if ([long]$state.MutationId -ne $MutationId) {
+        throw "Requested mutation $MutationId does not match current ReadyForApproval mutation $($state.MutationId)."
+    }
 }
 
 $dbPassword = Read-Step13DpapiSecret (Get-Step13SecretFile $settings 'db')

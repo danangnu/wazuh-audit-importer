@@ -1,0 +1,57 @@
+{
+  "step": "14B",
+  "static_checks": [
+    {
+      "name": "exact five-candidate pilot config",
+      "pass": true,
+      "detail": "['1180000', '1180001', '1180002', '1180003', '1180097']"
+    },
+    {
+      "name": "active scope hard cap",
+      "pass": true,
+      "detail": "ImportSettings rejects active allowlists larger than five."
+    },
+    {
+      "name": "no CandidateIds.Single in core",
+      "pass": true,
+      "detail": "Core no longer assumes one candidate for orchestration/planning."
+    },
+    {
+      "name": "per-candidate orchestration",
+      "pass": true,
+      "detail": "Each configured candidate is evaluated independently each cycle."
+    },
+    {
+      "name": "no automatic Solr apply in orchestrator",
+      "pass": true,
+      "detail": "Orchestrator invokes Step 11 only with apply:false."
+    },
+    {
+      "name": "direct Step10 candidate selector",
+      "pass": true,
+      "detail": "Direct Step 10A/10B commands support an explicit candidate under multi-config."
+    },
+    {
+      "name": "five new Step14B tests",
+      "pass": true,
+      "detail": "100 self-test cases are defined; five are Step 14B-specific."
+    },
+    {
+      "name": "FLOSVR01 allowlist migration present",
+      "pass": true,
+      "detail": "Explicit five-folder FIM migration script included."
+    },
+    {
+      "name": "Step13 status multi-candidate aware",
+      "pass": true,
+      "detail": "Operational status prints per-candidate stages."
+    },
+    {
+      "name": "approval helper multi-candidate aware",
+      "pass": true,
+      "detail": "Manual approval checks exact ready mutation across candidate states."
+    }
+  ],
+  "all_pass": true,
+  "runtime_build_required_on_mgmtnb08": true
+}

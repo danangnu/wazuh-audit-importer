@@ -7,8 +7,15 @@ public static class SolrPayloadPlanner
 {
     public static int Run(ImportSettings settings, MySqlConnection connection, string workerRoot, string? reportDir)
     {
+        if (settings.CandidateIds.Length != 1)
+            throw new FormatException("solr-build-payloads requires --candidate-id when the active allowlist contains multiple candidates.");
+        return Run(settings, connection, workerRoot, reportDir, settings.CandidateIds[0]);
+    }
+
+    public static int Run(ImportSettings settings, MySqlConnection connection, string workerRoot, string? reportDir, string candidateId)
+    {
         settings.ValidateWorker(workerRoot, Path.Combine(Path.GetTempPath(), "wazuh-payload-validation"));
-        var candidateId = settings.CandidateIds.Single();
+        settings.ValidateAllowedCandidate(candidateId);
         var target = SolrConcreteActionRepository.ReadLatestTarget(connection, settings, candidateId);
         var actions = SolrPayloadRepository.ReadActions(connection, target);
         if (actions.Any(x => x.ActionStatus != "planned"))

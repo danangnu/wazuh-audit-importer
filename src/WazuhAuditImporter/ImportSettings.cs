@@ -6,6 +6,7 @@ namespace WazuhAuditImporter;
 
 public sealed class ImportSettings
 {
+    public const int MaximumActiveCandidateIds = 5;
     public string DatabaseHost { get; set; } = "127.0.0.1";
     public uint DatabasePort { get; set; } = 3306;
     public string DatabaseName { get; set; } = "wazuh_audit_poc";
@@ -89,6 +90,10 @@ public sealed class ImportSettings
         if (CandidateIds is null || CandidateIds.Length == 0 ||
             CandidateIds.Any(id => id is null || !Regex.IsMatch(id, @"\A[0-9]{1,32}\z")))
             throw new FormatException("Set an explicit nonempty list of allowed CandidateIds.");
+        if (CandidateIds.Length > MaximumActiveCandidateIds)
+            throw new FormatException($"Step 14B active processing is limited to {MaximumActiveCandidateIds} explicitly allowed candidates.");
+        if (CandidateIds.Distinct(StringComparer.Ordinal).Count() != CandidateIds.Length)
+            throw new FormatException("CandidateIds must not contain duplicates.");
         ValidateCollector();
         if (WorkerLeaseSeconds is < 30 or > 1800 ||
             WorkerRetrySeconds is < 5 or > 3600 ||
@@ -111,8 +116,16 @@ public sealed class ImportSettings
         var fullState = Path.GetFullPath(stateDirectory);
         if (!Path.IsPathFullyQualified(fullState))
             throw new FormatException("Worker state directory must resolve to a fully-qualified path.");
-        if (CandidateIds.Length != 1 || CandidateIds[0] != "1180097")
-            throw new FormatException("Step 9 pilot remains limited to candidate 1180097.");
+        // Step 14B permits a small explicit allowlist. Every worker/collector/planner
+        // operation still checks CandidateIds; broad root-wide processing is forbidden.
+        if (CandidateIds.Length > MaximumActiveCandidateIds)
+            throw new FormatException($"Step 14B worker scope is limited to {MaximumActiveCandidateIds} candidates.");
+    }
+
+    public void ValidateAllowedCandidate(string candidateId)
+    {
+        if (string.IsNullOrWhiteSpace(candidateId) || !CandidateIds.Contains(candidateId, StringComparer.Ordinal))
+            throw new FormatException($"Candidate '{candidateId}' is outside the explicit Step 14B allowlist.");
     }
 
     public void ValidateCollector()
