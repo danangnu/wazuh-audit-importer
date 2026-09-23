@@ -1,0 +1,63 @@
+{
+  "step": "14A",
+  "generated_utc": "2026-09-23T07:56:56.684069Z",
+  "validation_scope": "static only; .NET SDK is unavailable in the packaging environment, so MGMTNB08 Restore-And-Preview.cmd remains the compile/runtime gate.",
+  "checks": [
+    {
+      "name": "Step14A command registered",
+      "pass": true,
+      "detail": "CLI recognizes solr-collision-audit."
+    },
+    {
+      "name": "Step14A returns before DB credential path",
+      "pass": true,
+      "detail": "Step14A branch is before MariaDB username/password handling."
+    },
+    {
+      "name": "Audit implementation has no MySQL API references",
+      "pass": true,
+      "detail": "SolrCollisionAudit has no MariaDB connector/repository references."
+    },
+    {
+      "name": "Audit implementation has no Solr write client references",
+      "pass": true,
+      "detail": "Step14A uses only SolrReadOnlyClient."
+    },
+    {
+      "name": "Metadata-only disk capture",
+      "pass": true,
+      "detail": "Step14A reuses metadata-only disk capture and does not read source content."
+    },
+    {
+      "name": "Controlled candidate cap",
+      "pass": true,
+      "detail": "Default 10 candidates; hard cap 100."
+    },
+    {
+      "name": "Controlled Solr lookup cap",
+      "pass": true,
+      "detail": "Default 1000 unique-key GETs; hard cap 5000; no silent truncation."
+    },
+    {
+      "name": "Self-test inventory",
+      "pass": true,
+      "detail": "95 offline self-tests are defined; Step14A adds nine tests including non-blocking legacy repository-root alias handling."
+    },
+    {
+      "name": "Legacy repository-root aliases are non-blocking only after candidate ownership matches",
+      "pass": true,
+      "detail": "Step14A compares candidate-relative paths only after Solr dbcandno equals the disk candidate; G:\\Candidate, \\\\FLOSVR01\\Candidate and \\\\FLOSVR01\\FastTrack\\Candidate representations of the same candidate-relative file are evidence-only aliases."
+    },
+    {
+      "name": "Report folder ignored",
+      "pass": true,
+      "detail": "Generated Step14A reports are excluded from Git."
+    },
+    {
+      "name": "Step13 scheduled-task fix preserved",
+      "pass": true,
+      "detail": "Step13 operational task installer remains in package."
+    }
+  ],
+  "all_pass": true
+}

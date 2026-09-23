@@ -14,10 +14,12 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "pipeline-once" or "pipeline"))
-                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-plan-actions, solr-build-payloads, solr-execute, pipeline-once, pipeline or help.");
-            string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null;
+            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-collision-audit" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "pipeline-once" or "pipeline"))
+                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-collision-audit, solr-plan-actions, solr-build-payloads, solr-execute, pipeline-once, pipeline or help.");
+            string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null, candidateIdsCsv = null;
             ulong? mutationId = null;
+            var candidateLimit = SolrCollisionAudit.DefaultCandidateLimit;
+            var maxIdLookups = SolrCollisionAudit.DefaultMaxIdLookups;
             var apply = false;
             var i = 1;
             if (command == "import")
@@ -44,6 +46,22 @@ public static class Cli
                         throw new FormatException("--mutation-id requires a positive integer value.");
                     mutationId = parsedMutation;
                 }
+                else if (option is "--candidate-limit" or "--max-id-lookups")
+                {
+                    if (command != "solr-collision-audit") throw new FormatException(option + " is only valid with solr-collision-audit.");
+                    if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal) ||
+                        !int.TryParse(args[i++], NumberStyles.None, CultureInfo.InvariantCulture, out var parsed))
+                        throw new FormatException(option + " requires a positive integer value.");
+                    if (option == "--candidate-limit") candidateLimit = parsed;
+                    else maxIdLookups = parsed;
+                }
+                else if (option == "--candidate-ids")
+                {
+                    if (command != "solr-collision-audit") throw new FormatException("--candidate-ids is only valid with solr-collision-audit.");
+                    if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
+                        throw new FormatException("--candidate-ids requires a comma-separated value.");
+                    candidateIdsCsv = args[i++];
+                }
                 else if (option is "--config" or "--db-user" or "--indexer-user" or "--worker-root" or "--state-dir" or "--report-dir")
                 {
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
@@ -63,6 +81,7 @@ public static class Cli
             {
                 "worker-preflight" or "work-once" or "work" => "Candidate worker may read file metadata only. No source-file changes. No Solr writes.\n",
                 "solr-readonly" => "Step 9 may read FLOSVR01 file metadata and query Solr using HTTP GET only. No Solr writes.\n",
+                "solr-collision-audit" => "Step 14A audits generated legacy IDs across a controlled candidate subset and checks current Solr unique-key ownership using GET only. No DB/Solr writes.\n",
                 "solr-plan-actions" => "Step 10A reads FLOSVR01 metadata and Solr using GET, then stores concrete dry-run actions in MariaDB. No Solr writes.\n",
                 "solr-build-payloads" => "Step 10B may read source document content to build/stash reviewed Solr update payloads. No Solr writes.\n",
                 "solr-execute" => apply
@@ -110,6 +129,20 @@ public static class Cli
                 if (string.IsNullOrWhiteSpace(workerRoot))
                     throw new FormatException("solr-readonly requires --worker-root <accessible FLOSVR01 candidate root>.");
                 return SolrReadOnlyDiscovery.Run(settings, workerRoot, reportDir);
+            }
+
+            if (command == "solr-collision-audit")
+            {
+                if (string.IsNullOrWhiteSpace(workerRoot))
+                    throw new FormatException("solr-collision-audit requires --worker-root <accessible FLOSVR01 candidate root>.");
+                IReadOnlyList<string>? explicitIds = null;
+                if (!string.IsNullOrWhiteSpace(candidateIdsCsv))
+                {
+                    explicitIds = candidateIdsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    if (explicitIds.Count == 0)
+                        throw new FormatException("--candidate-ids did not contain any candidate IDs.");
+                }
+                return SolrCollisionAudit.Run(settings, workerRoot, reportDir, candidateLimit, maxIdLookups, explicitIds);
             }
 
             if ((command is "solr-plan-actions" or "solr-build-payloads" or "solr-execute") && string.IsNullOrWhiteSpace(workerRoot))
@@ -354,6 +387,11 @@ public static class Cli
           solr-readonly --worker-root <root>         Step 9: query the approved AlliedSolrCore using GET only and
                                                     compare candidate 1180097 against FLOSVR01 metadata.
                        [--report-dir <dir>]          Optionally save a local JSON report; no DB/Solr writes.
+          solr-collision-audit --worker-root <root> Step 14A: metadata-only controlled multi-candidate audit of the
+                               [--candidate-limit N] filename-derived legacy Solr IDs plus GET-only current ID ownership.
+                               [--candidate-ids a,b] Explicit IDs override automatic controlled selection.
+                               [--max-id-lookups N] Default 1000; hard cap 5000 unique-key GETs per run.
+                               [--report-dir <dir>]  Save JSON + CSV findings. No MariaDB connection or Solr writes.
           solr-plan-actions --worker-root <root>     Step 10A: expand the latest completed candidate reindex plan
                            [--report-dir <dir>]      into concrete delete/index action rows. Solr remains read-only.
           solr-build-payloads --worker-root <root>  Step 10B: build/stash exact reviewed delete/index JSON payloads.

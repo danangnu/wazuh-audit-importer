@@ -539,6 +539,125 @@ cases.Add(("Step 11 detects current Solr action-plan drift", () =>
 }));
 
 
+
+
+cases.Add(("Step 14A controlled selector includes configured seed and numeric folders only", () =>
+{
+    var root = Path.Combine(Path.GetTempPath(), "wai-step14a-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(root);
+    Directory.CreateDirectory(Path.Combine(root, "1180097"));
+    Directory.CreateDirectory(Path.Combine(root, "1180098"));
+    Directory.CreateDirectory(Path.Combine(root, "not-a-candidate"));
+    try
+    {
+        var selected = SolrCollisionAudit.SelectCandidateDirectories(root, ["1180097"], null, 2);
+        Assert(selected.Count == 2);
+        Assert(selected.Any(x => x.CandidateId == "1180097"));
+        Assert(selected.Any(x => x.CandidateId == "1180098"));
+        Assert(selected.All(x => x.CandidateId.All(char.IsAsciiDigit)));
+    }
+    finally { Directory.Delete(root, true); }
+}));
+
+cases.Add(("Step 14A explicit candidate selection is exact", () =>
+{
+    var root = Path.Combine(Path.GetTempPath(), "wai-step14a-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(root);
+    Directory.CreateDirectory(Path.Combine(root, "100"));
+    Directory.CreateDirectory(Path.Combine(root, "200"));
+    Directory.CreateDirectory(Path.Combine(root, "300"));
+    try
+    {
+        var selected = SolrCollisionAudit.SelectCandidateDirectories(root, ["100"], ["300", "200"], 10);
+        Assert(selected.Select(x => x.CandidateId).SequenceEqual(["200", "300"], StringComparer.Ordinal));
+    }
+    finally { Directory.Delete(root, true); }
+}));
+
+cases.Add(("Step 14A detects cross-candidate filename-derived ID collision", () =>
+{
+    var files = new List<CollisionAuditDiskFile>
+    {
+        new("100", "Resume.pdf", @"C:\x\100\Resume.pdf", @"G:\Candidate\To 1189999\100\Resume.pdf", "resumepdf", 1, DateTime.UtcNow),
+        new("200", "Resume.pdf", @"C:\x\200\Resume.pdf", @"G:\Candidate\To 1189999\200\Resume.pdf", "resumepdf", 1, DateTime.UtcNow)
+    };
+    var result = SolrCollisionAudit.Analyze(files, new Dictionary<string, SolrReadOnlyDocument>(StringComparer.Ordinal));
+    Assert(result.CrossCandidateDiskCollisionGroups == 1);
+    Assert(!result.SafeToExpandScope);
+}));
+
+cases.Add(("Step 14A detects within-candidate legacy ID collision", () =>
+{
+    var files = new List<CollisionAuditDiskFile>
+    {
+        new("100", "A_B.txt", @"C:\x\100\A_B.txt", @"G:\Candidate\To 1189999\100\A_B.txt", "a-btxt", 1, DateTime.UtcNow),
+        new("100", "A-B.txt", @"C:\x\100\A-B.txt", @"G:\Candidate\To 1189999\100\A-B.txt", "a-btxt", 1, DateTime.UtcNow)
+    };
+    var result = SolrCollisionAudit.Analyze(files, new Dictionary<string, SolrReadOnlyDocument>(StringComparer.Ordinal));
+    Assert(result.WithinCandidateDiskCollisionGroups == 1);
+    Assert(!result.SafeToExpandScope);
+}));
+
+cases.Add(("Step 14A detects existing Solr owner from another candidate", () =>
+{
+    var file = new CollisionAuditDiskFile("100", "Resume.pdf", @"C:\x\100\Resume.pdf",
+        @"G:\Candidate\To 1189999\100\Resume.pdf", "resumepdf", 1, DateTime.UtcNow);
+    var owners = new Dictionary<string, SolrReadOnlyDocument>(StringComparer.Ordinal)
+    {
+        ["resumepdf"] = new("resumepdf", "999", @"G:\Candidate\To 1189999\999\Resume.pdf", null)
+    };
+    var result = SolrCollisionAudit.Analyze([file], owners);
+    Assert(result.SolrOwnershipConflicts == 1 && !result.SafeToExpandScope);
+}));
+
+cases.Add(("Step 14A accepts matching Solr owner and canonical path", () =>
+{
+    var path = @"G:\Candidate\To 1189999\100\Resume.pdf";
+    var file = new CollisionAuditDiskFile("100", "Resume.pdf", @"C:\x\100\Resume.pdf", path, "resumepdf", 1, DateTime.UtcNow);
+    var owners = new Dictionary<string, SolrReadOnlyDocument>(StringComparer.Ordinal)
+    {
+        ["resumepdf"] = new("resumepdf", "100", path, null)
+    };
+    var result = SolrCollisionAudit.Analyze([file], owners);
+    Assert(result.SolrConflicts.Count == 0 && result.SafeToExpandScope);
+}));
+
+cases.Add(("Step 14A accepts same-document legacy root alias", () =>
+{
+    var file = new CollisionAuditDiskFile("1180040", "1180040 Resume.pdf", @"C:\x\1180040\1180040 Resume.pdf",
+        @"G:\Candidate\To 1189999\1180040\1180040 Resume.pdf", "1180040-resumepdf", 1, DateTime.UtcNow);
+    var owners = new Dictionary<string, SolrReadOnlyDocument>(StringComparer.Ordinal)
+    {
+        ["1180040-resumepdf"] = new("1180040-resumepdf", "1180040",
+            @"\\FLOSVR01\Candidate\To 1189999\1180040\1180040 Resume.pdf", null)
+    };
+    var result = SolrCollisionAudit.Analyze([file], owners);
+    Assert(result.SolrConflicts.Count == 0);
+    Assert(result.SolrPathAliasCount == 1);
+    Assert(result.SolrPathAliases[0].Kind == "existing_solr_same_document_root_alias");
+    Assert(result.SolrPathAliases[0].NormalizedCandidateRelativePath == "1180040 RESUME.PDF");
+    Assert(result.SafeToExpandScope);
+}));
+
+cases.Add(("Step 14A detects same-candidate Solr path conflict", () =>
+{
+    var file = new CollisionAuditDiskFile("100", "New Name.pdf", @"C:\x\100\New Name.pdf",
+        @"G:\Candidate\To 1189999\100\New Name.pdf", "sameid", 1, DateTime.UtcNow);
+    var owners = new Dictionary<string, SolrReadOnlyDocument>(StringComparer.Ordinal)
+    {
+        ["sameid"] = new("sameid", "100", @"G:\Candidate\To 1189999\100\Old Name.pdf", null)
+    };
+    var result = SolrCollisionAudit.Analyze([file], owners);
+    Assert(result.SolrPathConflicts == 1 && !result.SafeToExpandScope);
+}));
+
+cases.Add(("Step 14A lookup cap blocks uncontrolled audit size", () =>
+{
+    try { SolrCollisionAudit.EnsureLookupCap(1001, 1000); }
+    catch (InvalidOperationException) { return; }
+    throw new Exception("Expected Step 14A lookup-cap rejection.");
+}));
+
 cases.Add(("Step 12 orchestration defaults accepted", () => new ImportSettings().Validate()));
 cases.Add(("Step 12 orchestration poll interval bounded", () => Reject(() => new ImportSettings { OrchestratorPollSeconds = 1 }.Validate())));
 cases.Add(("Step 12 orchestration worker drain bounded", () => Reject(() => new ImportSettings { OrchestratorMaxWorkerItemsPerCycle = 0 }.Validate())));
@@ -612,5 +731,5 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;

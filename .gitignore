@@ -31,3 +31,5 @@ pipeline-reports/
 *.dpapi
 step13-health.json
 ops/step13.local.json
+
+solr-collision-audit-reports/
