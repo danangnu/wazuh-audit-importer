@@ -26,3 +26,8 @@ solr-readonly-reports/
 solr-action-reports/
 solr-payload-reports/
 pipeline-reports/
+
+# Step 13 local operational state
+*.dpapi
+step13-health.json
+ops/step13.local.json

@@ -1,0 +1,29 @@
+{
+  "step": 13,
+  "generated_utc": "2026-09-23T00:00:00Z",
+  "core_dotnet_source_changed_from_step12": false,
+  "expected_operational_files_present": true,
+  "missing_operational_files": [],
+  "step13_example_json_valid": true,
+  "powershell_basic_balance": {
+    "Approve-Step13Mutation.ps1": true,
+    "FLOSVR01-Use-MGMTNB08-Hostname.ps1": true,
+    "Initialize-Step13.ps1": true,
+    "Initialize-Step13Secrets.ps1": true,
+    "Initialize-Step13Ssh.ps1": true,
+    "Install-Step13Task.ps1": true,
+    "Repair-WazuhLabNetwork.ps1": true,
+    "Step13-Preflight.ps1": true,
+    "Step13-Run.ps1": true,
+    "Step13-Status.ps1": true,
+    "Step13.Common.ps1": true,
+    "Stop-Step13.ps1": true,
+    "Uninstall-Step13Task.ps1": true
+  },
+  "notes": [
+    "The .NET src/ and tests/ trees are byte-for-byte unchanged from Step 12; the existing 86/86 user-validated self-test gate remains applicable.",
+    "PowerShell basic_balance is a static delimiter/string sanity check only; MGMTNB08 runtime execution is the authoritative validation.",
+    "No plaintext password values are shipped. Runtime secrets are expected to be Windows-DPAPI protected outside the repository.",
+    "Step 13 supervisor is approval-gated and does not invoke solr-execute --apply."
+  ]
+}
