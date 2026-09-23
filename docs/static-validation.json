@@ -1,11 +1,14 @@
 {
-  "step": "10B",
+  "step": "11",
   "target_framework": "net9.0",
   "validation_type": "static_package_review_only",
   "dotnet_compilation_performed_here": false,
-  "expected_offline_self_tests": 70,
-  "solr_write_code_added": false,
-  "mariadb_schema_change": "adds solr_action_payload only",
+  "expected_offline_self_tests": 74,
+  "solr_write_code_added": true,
+  "solr_write_gate": "explicit solr-execute --mutation-id <id> --worker-root <root> --apply",
+  "mariadb_schema_change": "none; reuses existing mutation/action status, attempt, applied_at and last_error fields",
+  "preflight": "read-only DB/source/Solr revalidation with exact Step10A plan and Step10B payload regeneration",
+  "failure_semantics": "after first Solr POST, failed status is best-effort and operator must treat Solr state as potentially partial/uncertain",
   "legacy_extraction": {
     "txt_html_htm": "ported using ReadAllText",
     "word_rtf": "blocked until Aspose.Words 24.9 legacy path is ported/validated",

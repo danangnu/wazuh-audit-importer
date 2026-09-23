@@ -14,9 +14,10 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-plan-actions" or "solr-build-payloads"))
-                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-plan-actions, solr-build-payloads or help.");
+            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute"))
+                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-plan-actions, solr-build-payloads, solr-execute or help.");
             string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null;
+            ulong? mutationId = null;
             var apply = false;
             var i = 1;
             if (command == "import")
@@ -32,8 +33,16 @@ public static class Cli
                 if (!seen.Add(option)) throw new FormatException("Repeated option: " + option);
                 if (option == "--apply")
                 {
-                    if (command != "import") throw new FormatException("--apply is only valid with import.");
+                    if (command is not ("import" or "solr-execute")) throw new FormatException("--apply is only valid with import or solr-execute.");
                     apply = true;
+                }
+                else if (option == "--mutation-id")
+                {
+                    if (command != "solr-execute") throw new FormatException("--mutation-id is only valid with solr-execute.");
+                    if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal) ||
+                        !ulong.TryParse(args[i++], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var parsedMutation) || parsedMutation == 0)
+                        throw new FormatException("--mutation-id requires a positive integer value.");
+                    mutationId = parsedMutation;
                 }
                 else if (option is "--config" or "--db-user" or "--indexer-user" or "--worker-root" or "--state-dir" or "--report-dir")
                 {
@@ -56,6 +65,9 @@ public static class Cli
                 "solr-readonly" => "Step 9 may read FLOSVR01 file metadata and query Solr using HTTP GET only. No Solr writes.\n",
                 "solr-plan-actions" => "Step 10A reads FLOSVR01 metadata and Solr using GET, then stores concrete dry-run actions in MariaDB. No Solr writes.\n",
                 "solr-build-payloads" => "Step 10B may read source document content to build/stash reviewed Solr update payloads. No Solr writes.\n",
+                "solr-execute" => apply
+                    ? "Step 11 controlled Solr execution. --apply MAY write reviewed actions to the approved AlliedSolrCore after safety gates pass.\n"
+                    : "Step 11 preflight only. Reads DB/source/Solr state; no Solr or MariaDB status writes.\n",
                 _ => "No Solr writes. No source-document access.\n"
             });
 
@@ -99,8 +111,10 @@ public static class Cli
                 return SolrReadOnlyDiscovery.Run(settings, workerRoot, reportDir);
             }
 
-            if ((command is "solr-plan-actions" or "solr-build-payloads") && string.IsNullOrWhiteSpace(workerRoot))
+            if ((command is "solr-plan-actions" or "solr-build-payloads" or "solr-execute") && string.IsNullOrWhiteSpace(workerRoot))
                 throw new FormatException($"{command} requires --worker-root <accessible FLOSVR01 candidate root>.");
+            if (command == "solr-execute" && mutationId is null)
+                throw new FormatException("solr-execute requires --mutation-id <positive integer>.");
 
             if ((command is "work-once" or "work") && string.IsNullOrWhiteSpace(workerRoot))
                 throw new FormatException($"{command} requires --worker-root <accessible candidate root>.");
@@ -156,6 +170,10 @@ public static class Cli
             {
                 return SolrPayloadPlanner.Run(settings, connection, workerRoot!, reportDir);
             }
+            if (command == "solr-execute")
+            {
+                return SolrExecutor.Run(settings, connection, workerRoot!, mutationId!.Value, apply);
+            }
 
             if (command == "check-db")
             {
@@ -206,6 +224,12 @@ public static class Cli
         {
             Console.Error.WriteLine("CONFLICT: " + ex.Message);
             return 4;
+        }
+        catch (SolrExecutionException ex)
+        {
+            Console.Error.WriteLine("SOLR EXECUTION ERROR: " + ex.Message);
+            Console.Error.WriteLine("If any update POST had started, treat Solr state as uncertain until read-only verification is completed.");
+            return 10;
         }
         catch (SolrPayloadException ex)
         {
@@ -311,6 +335,12 @@ public static class Cli
                        [--report-dir <dir>]          Optionally save a local JSON report; no DB/Solr writes.
           solr-plan-actions --worker-root <root>     Step 10A: expand the latest completed candidate reindex plan
                            [--report-dir <dir>]      into concrete delete/index action rows. Solr remains read-only.
+          solr-build-payloads --worker-root <root>  Step 10B: build/stash exact reviewed delete/index JSON payloads.
+                              [--report-dir <dir>]  Reads source content; never posts to Solr.
+          solr-execute --mutation-id <id>           Step 11 preflight: revalidate exact mutation, payload/source hashes,
+                       --worker-root <root>          and current Solr/disk state. No writes without --apply.
+          solr-execute --mutation-id <id>           Step 11 controlled execution after all gates pass.
+                       --worker-root <root> --apply  Posts reviewed actions, explicit commit, GET verification, DB status update.
 
         Optional: --config <path.json>  --db-user <username>  --indexer-user <username>
                   --worker-root <fully-qualified local/UNC root>  --state-dir <local state directory>
@@ -322,9 +352,7 @@ public static class Cli
         Default scope: FLOSVR01 / 001 / candidate 1180097 only.
         Worker commands process only the explicit pilot queue/root. Step 8 persists a dry-run
         candidate-level Solr plan in MariaDB. Step 9 adds read-only Solr discovery. Step 10A
-        stores concrete action plans in solr_mutation_action only after read-only Solr checks;
-        no Solr add/delete/update/commit endpoint is called.
-          solr-build-payloads --worker-root <root>  Step 10B: build/stash exact dry-run delete/index JSON payloads.
-                              [--report-dir <dir>]  Reads source content for index actions; never posts to Solr.
+        stores concrete action plans; Step 10B stores reviewed payloads. Step 11 is the first
+        command that can call the Solr update API, and only with an explicit mutation id plus --apply.
         """);
 }

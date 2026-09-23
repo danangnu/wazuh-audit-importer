@@ -444,6 +444,74 @@ cases.Add(("Step 10B source metadata change blocks stale payload generation", ()
     finally { Directory.Delete(root, true); }
 }));
 
+
+
+cases.Add(("Step 11 accepts an intact ready reviewed payload", () =>
+{
+    var action = new SolrStoredAction(9, 5, settings.SourceInstance, settings.AgentId, "1180097", 24,
+        1, "delete_document", "planned", "stale_in_solr", "oldpdf",
+        @"G:\Candidate\To 1189999\1180097\old.pdf", null, null, null, "key");
+    var json = "{\"delete\":{\"id\":\"oldpdf\"}}";
+    var hash = LegacyContentExtractor.HexSha256(System.Text.Encoding.UTF8.GetBytes(json));
+    var payload = new SolrPayloadSpec(9, 5, "delete_document", "ready", "solr_delete_by_id",
+        json, hash, null, null, null, null, null, null, DateTime.UtcNow);
+    SolrExecutionSafety.ValidateReadyItem(new SolrExecutionItem(action, payload));
+}));
+
+cases.Add(("Step 11 rejects a blocked payload before execution", () =>
+{
+    var action = new SolrStoredAction(10, 5, settings.SourceInstance, settings.AgentId, "1180097", 24,
+        1, "index_document", "planned", "missing_in_solr", "atxt",
+        @"G:\Candidate\To 1189999\1180097\a.txt", @"C:\tmp\a.txt", 0, DateTime.UtcNow, "key2");
+    var payload = new SolrPayloadSpec(10, 5, "index_document", "blocked", "legacy_readalltext",
+        null, null, null, null, 0, 0, DateTime.UtcNow, "empty_document_legacy_behavior", DateTime.UtcNow);
+    try { SolrExecutionSafety.ValidateReadyItem(new SolrExecutionItem(action, payload)); }
+    catch (SolrExecutionException) { return; }
+    throw new Exception("Expected blocked Step 11 payload rejection.");
+}));
+
+cases.Add(("Step 11 detects reviewed payload drift", () =>
+{
+    var root = Path.Combine(Path.GetTempPath(), "wai-step11-" + Guid.NewGuid().ToString("N"));
+    var candidate = Path.Combine(root, "1180097"); Directory.CreateDirectory(candidate);
+    var file = Path.Combine(candidate, "a.txt"); File.WriteAllText(file, "original");
+    var info = new FileInfo(file);
+    try
+    {
+        var action = new SolrStoredAction(11, 5, settings.SourceInstance, settings.AgentId, "1180097", 24,
+            1, "index_document", "planned", "missing_in_solr", "atxt",
+            @"G:\Candidate\To 1189999\1180097\a.txt", file, (ulong)info.Length, info.LastWriteTimeUtc, "key3");
+        var generatedAt = new DateTime(2026,9,23,3,0,0,DateTimeKind.Utc);
+        var reviewed = SolrPayloadBuilder.Build(action, root, generatedAt);
+        var item = new SolrExecutionItem(action, reviewed);
+        File.WriteAllText(file, "modified-content");
+        var now = SolrPayloadBuilder.Build(action, root, generatedAt);
+        try { SolrExecutionSafety.ValidateCurrentPayload(item, now); }
+        catch (SolrExecutionException) { return; }
+        throw new Exception("Expected Step 11 payload drift rejection.");
+    }
+    finally { Directory.Delete(root, true); }
+}));
+
+cases.Add(("Step 11 detects current Solr action-plan drift", () =>
+{
+    var action = new SolrStoredAction(12, 5, settings.SourceInstance, settings.AgentId, "1180097", 24,
+        1, "delete_document", "planned", "stale_in_solr", "oldpdf",
+        @"G:\Candidate\To 1189999\1180097\old.pdf", null, null, null, "stable-key");
+    var json = "{\"delete\":{\"id\":\"oldpdf\"}}";
+    var payload = new SolrPayloadSpec(12, 5, "delete_document", "ready", "solr_delete_by_id",
+        json, LegacyContentExtractor.HexSha256(System.Text.Encoding.UTF8.GetBytes(json)), null, null, null, null, null, null, DateTime.UtcNow);
+    var stored = new List<SolrExecutionItem> { new(action, payload) };
+    var current = new List<SolrConcreteActionSpec>
+    {
+        new(1, "delete_document", "planned", "stale_in_solr", "different-id",
+            @"G:\Candidate\To 1189999\1180097\old.pdf", null, null, null, null, "different-key")
+    };
+    try { SolrExecutionSafety.ValidateCurrentActionPlan(stored, current); }
+    catch (SolrExecutionException) { return; }
+    throw new Exception("Expected Step 11 action-plan drift rejection.");
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -451,5 +519,5 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B payload tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;

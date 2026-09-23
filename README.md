@@ -1,166 +1,169 @@
-# Step 10B — Legacy-compatible Solr payload generation (dry run)
+# Step 11 — Controlled Solr execution
 
-Step 10B converts the Step 10A concrete actions into stored, reviewable Solr
-update JSON **without sending anything to Solr**.
-
-Pilot scope remains fixed:
+Step 11 adds the first command that can actually update Solr. It executes only a
+specific, already reviewed Step 10A/10B mutation and keeps the pilot scope fixed:
 
 ```text
 Filesystem source : \\FLOSVR01\FastTrack\Candidate\To 1189999
 Candidate         : 1180097
+Wazuh agent       : 001 / FLOSVR01
 Solr endpoint     : http://192.168.18.22:8983/solr/AlliedSolrCore
 Canonical root    : G:\Candidate\To 1189999
 MariaDB           : 127.0.0.1:3306 / wazuh_audit_poc on MGMTNB08
 ```
 
-## Legacy extraction contract used
-
-The supplied legacy indexing source shows:
-
-- `.txt`, `.html`, `.htm` -> `My.Computer.FileSystem.ReadAllText(filePath)`;
-- `.doc`, `.docx`, `.docm`, `.rtf` -> Aspose.Words 24.9.0 text export;
-- `.pdf` -> PDFBox 1.8.2 `PDFTextStripper`;
-- after extraction, the legacy code removes all characters except
-  `[a-zA-Z0-9_.]` for its emptiness test and does **not** index the document
-  when that result is empty;
-- Solr fields are `id`, `dbcandno`, `content`, `path`, `last_update`.
-
-Step 10B ports the `ReadAllText` path exactly. It deliberately **blocks** Word
-and PDF payloads instead of silently substituting a different extractor. This is
-safer than calling a modern extractor and claiming byte/text compatibility with
-the legacy index.
-
-For the current Step 10A candidate state, `2026 09 16 001.txt` was observed as a
-0-byte source file. Therefore the expected first Step 10B result is:
+The current reviewed test mutation is `mutation_id=5`, worker version `24`:
 
 ```text
-delete_document -> READY
-index_document  -> BLOCKED (empty_document_legacy_behavior)
+order 1  delete_document  old stale resume                 READY
+order 2  index_document   WAZUH_SOLR_CONTENT_TEST.txt      READY
+blocked payloads: 0
 ```
 
-That blocked index is expected and reproduces the supplied legacy `doIndexing`
-behavior.
+## Safety model
 
-## Safety boundary
+`solr-execute` requires an explicit mutation id. Without `--apply`, it is a
+read-only preflight. The preflight checks all of the following again immediately
+before execution:
 
-`solr-build-payloads` may:
+- mutation identity/scope and candidate queue version;
+- every concrete action is still `planned`;
+- every Step 10B payload is `ready`, unblocked and has a valid payload SHA-256;
+- current FLOSVR01 inventory and current Solr GET state regenerate exactly the
+  same deterministic Step 10A action plan;
+- source-backed payloads regenerate byte-for-byte with the same source hash,
+  extracted-content hash, file metadata, JSON and payload hash;
+- the live Solr schema still has the approved unique key and required fields.
 
-- read Step 10A concrete action rows from MariaDB;
-- read **source file contents** for `index_document` actions;
-- hash the source file and extracted content;
-- store dry-run payload/evidence rows in `solr_action_payload`;
-- write a local JSON report.
+With `--apply`, MariaDB first atomically claims the selected mutation/actions as
+`processing`. The tool then runs the live safety checks again before the first
+Solr POST.
 
-It does **not**:
+Actions are POSTed in reviewed order and followed by one explicit commit. The
+final state is then verified with Solr GET requests and a complete candidate
+reconciliation. Only after verification are mutation/action rows marked
+`applied`.
 
-- change source files;
-- POST/PUT/DELETE to Solr;
-- call Solr commit/optimize/config APIs;
-- change `solr_mutation_action.status` from `planned`;
-- mark anything `applied`.
+Important: Solr does not provide a MariaDB-style transaction spanning several
+HTTP update requests. A failure after the first POST can leave an uncertain or
+partial Solr state. In that case the tool records `failed` on a best-effort basis
+and tells the operator to inspect with read-only queries before any retry. It
+never sends a Solr rollback because this is a shared core and rollback could
+interfere with unrelated writers.
 
-## 1. Build
+## 1. Build and offline tests
 
 ```powershell
 cd "C:\Users\dnurdiansyah\Documents\NewAllied\WazuhAuditImporter"
 .\Restore-And-Preview.cmd
 ```
 
-The offline self-tests now cover Step 10B delete payloads, text extraction,
-legacy empty-document behavior, extractor blocking, and source metadata drift.
-They make no MariaDB or Solr connection.
+Step 11 adds offline tests for ready-payload integrity, blocked-payload rejection,
+payload/source drift and deterministic action-plan drift. Offline tests do not
+connect to MariaDB or Solr.
 
-## 2. Apply migration
+No new database migration is required for Step 11. Existing
+`solr_mutation_queue` and `solr_mutation_action` status/attempt/error fields are
+used for execution tracking.
 
-Execute in the local MariaDB client:
+## 2. Run Step 11 preflight — no writes
 
-```text
-sql\012_create_solr_action_payload.sql
-```
-
-It creates only:
-
-```text
-wazuh_audit_poc.solr_action_payload
-```
-
-Then verify:
-
-```powershell
-dotnet .\src\WazuhAuditImporter\bin\Debug\net9.0\WazuhAuditImporter.dll check-db
-```
-
-`check-db` should include a `solr_action_payload` count.
-
-## 3. Build/stash payloads
+For the currently reviewed mutation:
 
 ```powershell
 $root = "\\FLOSVR01\FastTrack\Candidate\To 1189999"
 
 dotnet .\src\WazuhAuditImporter\bin\Debug\net9.0\WazuhAuditImporter.dll `
-    solr-build-payloads `
-    --worker-root "$root" `
-    --report-dir ".\solr-payload-reports"
+    solr-execute `
+    --mutation-id 5 `
+    --worker-root "$root"
 ```
 
 Or:
 
 ```powershell
-.\Solr-Build-Payloads.cmd
+.\Solr-Execute-Preflight.cmd 5
 ```
 
-A ready delete payload is stored in the Solr JSON update form:
-
-```json
-{"delete":{"id":"..."}}
-```
-
-A ready index payload contains:
+Expected shape:
 
 ```text
-id
-dbcandno
-content
-path
-last_update
+PREFLIGHT PASS.
+NO SOLR WRITES. No MariaDB status rows changed.
 ```
 
-and is wrapped in a JSON `add.doc` update object. `last_update` is frozen at the
-first payload-generation time so the reviewed payload is stable on replay.
+Do **not** run `--apply` if preflight reports source drift, Solr/disk plan drift,
+a blocked/missing payload, queue-version drift, schema drift or any unexpected
+Solr identity/path state.
 
-## Blocked payloads
+## 3. Controlled apply
 
-A blocked row stores no executable `payload_json`. Examples:
+Only after the same mutation passes preflight:
+
+```powershell
+$root = "\\FLOSVR01\FastTrack\Candidate\To 1189999"
+
+dotnet .\src\WazuhAuditImporter\bin\Debug\net9.0\WazuhAuditImporter.dll `
+    solr-execute `
+    --mutation-id 5 `
+    --worker-root "$root" `
+    --apply
+```
+
+The convenience script adds an additional typed confirmation:
+
+```powershell
+.\Solr-Execute-Apply.cmd 5
+```
+
+The expected reviewed writes for mutation 5 are:
 
 ```text
-empty_document_legacy_behavior
-legacy_extractor_not_ported
-source_file_missing
-source_changed_since_action_plan
-unsupported_extension
+DELETE id=1180097-2025-08-22-choi-arthur-resume
+ADD    id=wazuh-solr-content-testtxt
+COMMIT
+GET verification
 ```
 
-If any payload is blocked, the command stores the evidence then exits non-zero.
-This is a review gate, not a Solr failure. Do not bypass it by manually marking
-the action applied.
-
-Existing payload rows are reused on rerun instead of being regenerated with a
-new timestamp. A later executor must still revalidate source hash/metadata before
-using a stored index payload.
-
-## 4. Verify
-
-Run:
+The indexed document must resolve to:
 
 ```text
-sql\013_verify_solr_payloads.sql
+dbcandno = 1180097
+path      = G:\Candidate\To 1189999\1180097\WAZUH_SOLR_CONTENT_TEST.txt
 ```
 
-Expected current pilot outcome is one `ready` delete row and one `blocked` index
-row because the currently planned TXT file is empty.
+## 4. Verify MariaDB execution state
 
-## Next step
+After a successful apply, run:
 
-Step 10C/11 should first resolve/validate document extraction for non-empty
-Word/PDF content and add pre-execution source revalidation. Only after that should
-any controlled Solr write be considered.
+```text
+sql\014_verify_solr_execution.sql
+```
+
+Expected for mutation 5:
+
+```text
+solr_mutation_queue.status = applied
+attempt_count              = 1
+applied_at_utc              = non-null
+
+all solr_mutation_action.status = applied
+all action attempt_count        = 1
+all applied_at_utc               = non-null
+all last_error                   = NULL
+```
+
+If the command reports an uncertain/partial state, do not manually change these
+statuses and do not rerun `--apply` until current Solr state has been inspected
+with the read-only command.
+
+## Existing Step 10B payload contract
+
+The actual write body is the exact payload stored in `solr_action_payload`.
+Step 11 does not regenerate a different write body after approval. It only
+regenerates the expected payload as a drift check and requires it to match the
+stored reviewed payload byte-for-byte.
+
+For `.txt`, `.html` and `.htm`, Step 10B mirrors the supplied legacy
+`ReadAllText` path. Word/PDF extraction remains blocked until the corresponding
+legacy-compatible extractor is ported and validated.

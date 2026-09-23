@@ -55,3 +55,24 @@ The sensitive Paths.ini itself is not packaged.
 Runtime compilation/self-tests and live read-only Solr comparison remain to be
 validated on MGMTNB08 because this packaging environment has no .NET SDK or
 network access to AlliedSolrCore.
+
+## Step 11 static validation
+
+Step 11 adds the first Solr POST path. It is reachable only through
+`solr-execute` with an explicit positive `--mutation-id`; omitting `--apply`
+performs preflight only. Preflight re-reads the selected DB mutation/actions and
+ready Step 10B payloads, validates stored payload SHA-256, regenerates the live
+Step 10A action plan from FLOSVR01 metadata plus Solr GET state, and regenerates
+each source-backed Step 10B payload for exact drift comparison.
+
+With `--apply`, the selected mutation/actions are first claimed as `processing`
+in MariaDB, live state is revalidated again, reviewed payload JSON is POSTed in
+action order, one explicit commit is sent, and final state is verified with GET
+and candidate reconciliation before rows are marked `applied`. No Solr rollback
+is issued because the core may have unrelated concurrent writers.
+
+Four additional offline tests cover Step 11 ready-payload integrity,
+blocked-payload rejection, source/payload drift, and current action-plan drift,
+bringing the expected self-test count to 74. This preparation environment still
+has no .NET SDK and cannot compile or run those tests; MGMTNB08 remains the
+runtime acceptance environment.
