@@ -679,6 +679,77 @@ cases.Add(("Step 14B parser accepts an explicitly allowlisted second candidate",
 cases.Add(("Step 14B candidate guard rejects IDs outside active allowlist", () => Reject(() =>
     new ImportSettings { CandidateIds = ["1180000", "1180097"] }.ValidateAllowedCandidate("1180002"))));
 
+
+cases.Add(("Step 14C pending baseline is not approved", () =>
+{
+    var snapshot = new BaselineEnrollmentSnapshot(1, "1180000", "pending", new string('a', 64),
+        4, 4, 0, 4, 0, 4, 4, 0, DateTime.UtcNow, null, null, null);
+    Assert(!BaselineEnrollmentPolicy.IsApproved(snapshot));
+}));
+
+cases.Add(("Step 14C approved baseline passes enrollment policy", () =>
+{
+    var snapshot = new BaselineEnrollmentSnapshot(1, "1180001", "approved", new string('b', 64),
+        1, 1, 0, 1, 1, 0, 0, 0, DateTime.UtcNow, DateTime.UtcNow, "tester", null);
+    Assert(BaselineEnrollmentPolicy.IsApproved(snapshot));
+}));
+
+cases.Add(("Step 14C approval token accepts exact SHA256", () =>
+    BaselineEnrollmentPolicy.ValidateApprovalToken(new string('c', 64), new string('C', 64))));
+
+cases.Add(("Step 14C approval token rejects stale baseline fingerprint", () =>
+{
+    try { BaselineEnrollmentPolicy.ValidateApprovalToken(new string('a', 64), new string('b', 64)); }
+    catch (EventConflictException) { return; }
+    throw new Exception("Expected stale baseline approval rejection.");
+}));
+
+cases.Add(("Step 14C baseline evidence summarizes reconciliation drift", () =>
+{
+    var report = new SolrReadOnlyReport(
+        "1180000", @"\\FLOSVR01\FastTrack\Candidate\To 1189999", @"\\FLOSVR01\FastTrack\Candidate\To 1189999\1180000",
+        @"G:\Candidate\To 1189999", "http://192.168.18.22:8983/solr/AlliedSolrCore", "id", null,
+        4, 3, 1, 2,
+        [
+            new("MATCH", @"G:\Candidate\To 1189999\1180000\a.txt", "a.txt", "atxt", "atxt", null, null),
+            new("MISSING_IN_SOLR", @"G:\Candidate\To 1189999\1180000\b.txt", "b.txt", "btxt", null, null, "missing"),
+            new("STALE_IN_SOLR", @"G:\Candidate\To 1189999\1180000\old.txt", null, null, "oldtxt", null, "stale"),
+            new("SKIPPED_BY_LEGACY_FILTER", @"G:\Candidate\To 1189999\1180000\DNI_x.txt", "DNI_x.txt", "dni-xtxt", null, null, "filtered")
+        ],
+        [], DateTime.UtcNow);
+    var evidence = BaselineEnrollmentService.BuildEvidence(report);
+    Assert(evidence.MatchCount == 1 && evidence.MissingCount == 1 && evidence.StaleCount == 1 && evidence.OtherConflictCount == 0);
+    Assert(evidence.DiskFileCount == 4 && evidence.EligibleFileCount == 3 && evidence.SkippedFileCount == 1);
+}));
+
+cases.Add(("Step 14C baseline evidence counts blocking comparison conflicts", () =>
+{
+    var report = new SolrReadOnlyReport(
+        "1180002", @"C:\root", @"C:\root\1180002", @"G:\Candidate\To 1189999",
+        "http://192.168.18.22:8983/solr/AlliedSolrCore", "id", null, 1, 1, 0, 1,
+        [new("ID_MISMATCH", @"G:\Candidate\To 1189999\1180002\a.txt", "a.txt", "atxt", "wrong", null, "id mismatch")],
+        [new("sameid", ["a.txt", "a-.txt"])], DateTime.UtcNow);
+    var evidence = BaselineEnrollmentService.BuildEvidence(report);
+    Assert(evidence.OtherConflictCount == 2);
+}));
+
+cases.Add(("Step 14C baseline fingerprint is stable for identical evidence", () =>
+{
+    var evidence = new BaselineEnrollmentEvidence("1180003", @"C:\x\1180003", @"G:\Candidate\To 1189999",
+        2, 2, 0, 2, 2, 0, 0, 0, [], []);
+    var a = BaselineEnrollmentService.ComputeFingerprint(evidence);
+    var b = BaselineEnrollmentService.ComputeFingerprint(evidence);
+    Assert(a.Sha256 == b.Sha256 && a.Json == b.Json && a.Sha256.Length == 64);
+}));
+
+cases.Add(("Step 14C baseline fingerprint changes when reviewed state changes", () =>
+{
+    var a = new BaselineEnrollmentEvidence("1180003", @"C:\x\1180003", @"G:\Candidate\To 1189999",
+        2, 2, 0, 2, 2, 0, 0, 0, [], []);
+    var b = a with { MissingCount = 1, MatchCount = 1 };
+    Assert(BaselineEnrollmentService.ComputeFingerprint(a).Sha256 != BaselineEnrollmentService.ComputeFingerprint(b).Sha256);
+}));
+
 cases.Add(("Step 12 orchestration defaults accepted", () => new ImportSettings().Validate()));
 cases.Add(("Step 12 orchestration poll interval bounded", () => Reject(() => new ImportSettings { OrchestratorPollSeconds = 1 }.Validate())));
 cases.Add(("Step 12 orchestration worker drain bounded", () => Reject(() => new ImportSettings { OrchestratorMaxWorkerItemsPerCycle = 0 }.Validate())));
@@ -752,5 +823,5 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;

@@ -26,6 +26,7 @@ public static class SolrConcreteActionPlanner
         settings.ValidateWorker(workerRoot, Path.GetFullPath("worker-state"));
         settings.ValidateSolrReadOnly();
         settings.ValidateAllowedCandidate(candidateId);
+        BaselineEnrollmentService.RequireApproved(connection, settings, candidateId, "Step 10A action planning");
         var target = SolrConcreteActionRepository.ReadLatestTarget(connection, settings, candidateId);
 
         Console.WriteLine("Step 10A concrete Solr action planning - DRY RUN ONLY.");

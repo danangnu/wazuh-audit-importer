@@ -14,9 +14,10 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-collision-audit" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "pipeline-once" or "pipeline"))
-                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-collision-audit, solr-plan-actions, solr-build-payloads, solr-execute, pipeline-once, pipeline or help.");
+            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-collision-audit" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-status" or "baseline-capture" or "baseline-approve" or "pipeline-once" or "pipeline"))
+                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-collision-audit, solr-plan-actions, solr-build-payloads, solr-execute, baseline-status, baseline-capture, baseline-approve, pipeline-once, pipeline or help.");
             string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null, candidateIdsCsv = null, candidateId = null;
+            string? baselineSha256 = null, reviewer = null, approvalNote = null;
             ulong? mutationId = null;
             var candidateLimit = SolrCollisionAudit.DefaultCandidateLimit;
             var maxIdLookups = SolrCollisionAudit.DefaultMaxIdLookups;
@@ -35,7 +36,7 @@ public static class Cli
                 if (!seen.Add(option)) throw new FormatException("Repeated option: " + option);
                 if (option == "--apply")
                 {
-                    if (command is not ("import" or "solr-execute")) throw new FormatException("--apply is only valid with import or solr-execute.");
+                    if (command is not ("import" or "solr-execute" or "baseline-approve")) throw new FormatException("--apply is only valid with import, solr-execute or baseline-approve.");
                     apply = true;
                 }
                 else if (option == "--mutation-id")
@@ -64,11 +65,32 @@ public static class Cli
                 }
                 else if (option == "--candidate-id")
                 {
-                    if (command is not ("solr-plan-actions" or "solr-build-payloads"))
-                        throw new FormatException("--candidate-id is only valid with solr-plan-actions or solr-build-payloads.");
+                    if (command is not ("solr-plan-actions" or "solr-build-payloads" or "baseline-capture" or "baseline-approve"))
+                        throw new FormatException("--candidate-id is only valid with solr-plan-actions, solr-build-payloads, baseline-capture or baseline-approve.");
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
                         throw new FormatException("--candidate-id requires a candidate ID value.");
                     candidateId = args[i++];
+                }
+                else if (option == "--baseline-sha256")
+                {
+                    if (command != "baseline-approve") throw new FormatException("--baseline-sha256 is only valid with baseline-approve.");
+                    if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
+                        throw new FormatException("--baseline-sha256 requires a 64-character SHA-256 value.");
+                    baselineSha256 = args[i++];
+                }
+                else if (option == "--reviewer")
+                {
+                    if (command != "baseline-approve") throw new FormatException("--reviewer is only valid with baseline-approve.");
+                    if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
+                        throw new FormatException("--reviewer requires a value.");
+                    reviewer = args[i++];
+                }
+                else if (option == "--approval-note")
+                {
+                    if (command != "baseline-approve") throw new FormatException("--approval-note is only valid with baseline-approve.");
+                    if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
+                        throw new FormatException("--approval-note requires a value.");
+                    approvalNote = args[i++];
                 }
                 else if (option is "--config" or "--db-user" or "--indexer-user" or "--worker-root" or "--state-dir" or "--report-dir")
                 {
@@ -95,8 +117,13 @@ public static class Cli
                 "solr-execute" => apply
                     ? "Step 11 controlled Solr execution. --apply MAY write reviewed actions to the approved AlliedSolrCore after safety gates pass.\n"
                     : "Step 11 preflight only. Reads DB/source/Solr state; no Solr or MariaDB status writes.\n",
+                "baseline-status" => "Step 14C baseline enrollment status. Reads MariaDB only; no Solr writes.\n",
+                "baseline-capture" => "Step 14C baseline capture. Reads FLOSVR01 metadata + Solr GET and stores review evidence in MariaDB; no Solr writes.\n",
+                "baseline-approve" => apply
+                    ? "Step 14C baseline approval. Revalidates the exact captured baseline, then records operator approval in MariaDB only. No Solr writes.\n"
+                    : "Step 14C baseline approval preview. Revalidates the exact captured baseline; no status or Solr writes.\n",
                 "pipeline-once" or "pipeline" => settings.CandidateIds.Length > 1
-                    ? "Step 14B approval-gated multi-candidate orchestration. Explicit allowlist only; NEVER writes to Solr.\n"
+                    ? "Step 14C baseline-gated multi-candidate orchestration. Explicit allowlist only; NEVER writes to Solr.\n"
                     : "Step 12 approval-gated orchestration. May collect events, reconcile metadata, read source content, store plans/payloads and run Step 11 preflight. NEVER writes to Solr.\n",
                 _ => "No Solr writes. No source-document access.\n"
             });
@@ -155,10 +182,15 @@ public static class Cli
                 return SolrCollisionAudit.Run(settings, workerRoot, reportDir, candidateLimit, maxIdLookups, explicitIds);
             }
 
-            if ((command is "solr-plan-actions" or "solr-build-payloads" or "solr-execute") && string.IsNullOrWhiteSpace(workerRoot))
+            if ((command is "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-capture" or "baseline-approve") && string.IsNullOrWhiteSpace(workerRoot))
                 throw new FormatException($"{command} requires --worker-root <accessible FLOSVR01 candidate root>.");
             if (command == "solr-execute" && mutationId is null)
                 throw new FormatException("solr-execute requires --mutation-id <positive integer>.");
+            if (command == "baseline-approve")
+            {
+                if (string.IsNullOrWhiteSpace(candidateId)) throw new FormatException("baseline-approve requires --candidate-id <id>.");
+                if (string.IsNullOrWhiteSpace(baselineSha256)) throw new FormatException("baseline-approve requires --baseline-sha256 <sha256>.");
+            }
 
             if ((command is "work-once" or "work" or "pipeline-once" or "pipeline") && string.IsNullOrWhiteSpace(workerRoot))
                 throw new FormatException($"{command} requires --worker-root <accessible candidate root>.");
@@ -226,6 +258,24 @@ public static class Cli
             using var connection = AuditRepository.Open(settings, username, password);
             password = string.Empty;
 
+            if (command == "baseline-status")
+            {
+                BaselineEnrollmentService.PrintStatus(settings, connection);
+                return 0;
+            }
+            if (command == "baseline-capture")
+            {
+                var captured = BaselineEnrollmentService.Capture(settings, connection, workerRoot!, reportDir, candidateId);
+                Console.WriteLine($"\nSTEP 14C BASELINE CAPTURE COMPLETE. candidates={captured.Count}; no Solr writes.");
+                return 0;
+            }
+            if (command == "baseline-approve")
+            {
+                reviewer ??= Environment.UserDomainName + "\\" + Environment.UserName;
+                _ = BaselineEnrollmentService.Approve(settings, connection, workerRoot!, candidateId!, baselineSha256!, reviewer, approvalNote, apply);
+                return 0;
+            }
+
             if (command == "solr-plan-actions")
             {
                 return candidateId is null
@@ -252,11 +302,13 @@ public static class Cli
                         (SELECT COUNT(*) FROM wazuh_audit_poc.collector_checkpoint),
                         (SELECT COUNT(*) FROM wazuh_audit_poc.solr_mutation_queue),
                         (SELECT COUNT(*) FROM wazuh_audit_poc.solr_mutation_action),
-                        (SELECT COUNT(*) FROM wazuh_audit_poc.solr_action_payload);
+                        (SELECT COUNT(*) FROM wazuh_audit_poc.solr_action_payload),
+                        (SELECT COUNT(*) FROM wazuh_audit_poc.candidate_baseline_enrollment),
+                        (SELECT COUNT(*) FROM wazuh_audit_poc.candidate_baseline_enrollment_history);
                     """, connection);
                 using var reader = counts.ExecuteReader();
                 reader.Read();
-                Console.WriteLine($"Rows: audit_event={reader.GetValue(0)}; candidate_work_queue={reader.GetValue(1)}; collector_checkpoint={reader.GetValue(2)}; solr_mutation_queue={reader.GetValue(3)}; solr_mutation_action={reader.GetValue(4)}; solr_action_payload={reader.GetValue(5)}");
+                Console.WriteLine($"Rows: audit_event={reader.GetValue(0)}; candidate_work_queue={reader.GetValue(1)}; collector_checkpoint={reader.GetValue(2)}; solr_mutation_queue={reader.GetValue(3)}; solr_mutation_action={reader.GetValue(4)}; solr_action_payload={reader.GetValue(5)}; candidate_baseline_enrollment={reader.GetValue(6)}; candidate_baseline_enrollment_history={reader.GetValue(7)}");
                 Console.WriteLine("Database check completed. No application rows changed.");
                 return 0;
             }
@@ -416,11 +468,19 @@ public static class Cli
                        --worker-root <root>          and current Solr/disk state. No writes without --apply.
           solr-execute --mutation-id <id>           Step 11 controlled execution after all gates pass.
                        --worker-root <root> --apply  Posts reviewed actions, explicit commit, GET verification, DB status update.
-          pipeline-once --worker-root <root>         Step 12/14B: collect once, drain due allowlisted work, then
-                        --state-dir <dir>            prepare each candidate independently and run Step 11 PRE-FLIGHT only.
+          baseline-status                           Step 14C: show captured/approved baseline state for every allowlisted candidate.
+          baseline-capture --worker-root <root>      Capture/refresh pending baseline evidence using FLOSVR01 metadata + Solr GET.
+                           [--candidate-id <id>]      Without candidate-id, captures all allowlisted candidates.
+                           [--report-dir <dir>]       Approved evidence is never silently replaced.
+          baseline-approve --candidate-id <id>       Revalidate exact baseline fingerprint. Preview only unless --apply.
+                           --baseline-sha256 <sha>
+                           --worker-root <root>
+                           [--reviewer <name>] [--approval-note <text>] [--apply]
+          pipeline-once --worker-root <root>         Step 14C: capture missing baselines first, collect/drain work, then
+                        --state-dir <dir>            only prepare candidates whose baseline is explicitly approved.
                         [--report-dir <dir>]
-          pipeline --worker-root <root>              Step 12/14B continuous approval-gated orchestration. With the
-                   --state-dir <dir>                 Step 14B config, up to five explicit candidates are independent.
+          pipeline --worker-root <root>              Step 14C continuous baseline-gated orchestration. Pending candidates
+                   --state-dir <dir>                 remain BaselineReviewRequired and cannot reach Step 10A/10B/11.
                    [--report-dir <dir>]              It NEVER calls the Solr update API; apply remains separate per mutation.
 
         Optional: --config <path.json>  --db-user <username>  --indexer-user <username>
@@ -437,8 +497,9 @@ public static class Cli
         candidate-level Solr plan in MariaDB. Step 9 adds read-only Solr discovery. Step 10A
         stores concrete action plans; Step 10B stores reviewed payloads. Step 11 is the first
         command that can call the Solr update API, and only with an explicit mutation id plus --apply.
-        Step 12/14B orchestrates collection through Step 11 preflight but deliberately keeps a manual
-        approval boundary: pipeline/pipeline-once never perform Solr update/delete/add/commit requests.
-        In Step 14B, each allowlisted candidate has its own mutation/approval state.
+        Step 14C adds a candidate baseline-enrollment gate before Step 10A. Newly allowlisted candidates
+        are captured as pending and remain BaselineReviewRequired until an operator approves the exact
+        baseline SHA-256. Manual Step 10A, Step 10B and Step 11 are also baseline-gated. Pipeline commands
+        never perform Solr update/delete/add/commit requests. Each allowlisted candidate remains independent.
         """);
 }

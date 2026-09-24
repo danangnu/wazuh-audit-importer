@@ -1,0 +1,38 @@
+{
+  "Evidence": {
+    "CandidateId": "1180002",
+    "AccessibleCandidateFolder": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999\\1180002",
+    "CanonicalRoot": "G:\\Candidate\\To 1189999",
+    "DiskFileCount": 1,
+    "EligibleFileCount": 1,
+    "SkippedFileCount": 0,
+    "SolrDocumentCount": 1,
+    "MatchCount": 0,
+    "MissingCount": 1,
+    "StaleCount": 1,
+    "OtherConflictCount": 0,
+    "Comparisons": [
+      {
+        "Status": "STALE_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180002\\1180002 2025 03 11 Birch, Amelia Scraped Seek TS Resume Profile 2025081911434678 TPEMAYU.txt",
+        "RelativePath": null,
+        "ExpectedLegacyId": null,
+        "SolrId": "1180002-2025-03-11-birch-amelia-scraped-seek-ts-resume-profile-2025081911434678-tpemayutxt",
+        "SolrLastUpdate": "2026-02-23T02:55:50.228+00:00",
+        "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+      },
+      {
+        "Status": "MISSING_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180002\\1180002 2025 03 11 Birch, Amelia Scraped Seek TS Resume Profile.txt",
+        "RelativePath": "1180002 2025 03 11 Birch, Amelia Scraped Seek TS Resume Profile.txt",
+        "ExpectedLegacyId": "1180002-2025-03-11-birch-amelia-scraped-seek-ts-resume-profiletxt",
+        "SolrId": null,
+        "SolrLastUpdate": null,
+        "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+      }
+    ],
+    "LocalLegacyIdCollisions": []
+  },
+  "BaselineSha256": "ef90d3070c7f9410920f753a957ed08d42ad7a6626b20d7dc0e29cc510346617",
+  "CapturedAtUtc": "2026-09-24T01:42:06.4734575Z"
+}

@@ -1,0 +1,29 @@
+{
+  "Evidence": {
+    "CandidateId": "1180001",
+    "AccessibleCandidateFolder": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999\\1180001",
+    "CanonicalRoot": "G:\\Candidate\\To 1189999",
+    "DiskFileCount": 1,
+    "EligibleFileCount": 1,
+    "SkippedFileCount": 0,
+    "SolrDocumentCount": 1,
+    "MatchCount": 1,
+    "MissingCount": 0,
+    "StaleCount": 0,
+    "OtherConflictCount": 0,
+    "Comparisons": [
+      {
+        "Status": "MATCH",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180001\\1180001 2026 07 10 Thackwell, Chloe Scraped Seek TS Resume Profile.txt",
+        "RelativePath": "1180001 2026 07 10 Thackwell, Chloe Scraped Seek TS Resume Profile.txt",
+        "ExpectedLegacyId": "1180001-2026-07-10-thackwell-chloe-scraped-seek-ts-resume-profiletxt",
+        "SolrId": "1180001-2026-07-10-thackwell-chloe-scraped-seek-ts-resume-profiletxt",
+        "SolrLastUpdate": "2026-09-23T08:47:31.619+00:00",
+        "Detail": null
+      }
+    ],
+    "LocalLegacyIdCollisions": []
+  },
+  "BaselineSha256": "3a5d414e5bf4758be1341165195522289a4d0d09f7859a3bbb4e97f9567d1a8d",
+  "CapturedAtUtc": "2026-09-24T01:42:02.0438759Z"
+}

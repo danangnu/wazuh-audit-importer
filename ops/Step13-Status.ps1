@@ -47,10 +47,9 @@ if (Test-Path -LiteralPath $statePath -PathType Leaf) {
     Write-Host "Mutation        : $($s.MutationId)"
     Write-Host "Worker version  : $($s.WorkerVersion)"
     Write-Host "Detail          : $($s.Detail)"
-    $candidateProperty = $s.PSObject.Properties['Candidates']
-    if ($null -ne $candidateProperty -and $null -ne $candidateProperty.Value) {
+    if ($null -ne $s.Candidates) {
         Write-Host "Candidate states:"
-        foreach ($c in @($candidateProperty.Value)) {
+        foreach ($c in @($s.Candidates)) {
             Write-Host ("  {0}: {1} mutation={2} version={3}" -f $c.CandidateId,$c.Stage,$c.MutationId,$c.WorkerVersion)
         }
     }

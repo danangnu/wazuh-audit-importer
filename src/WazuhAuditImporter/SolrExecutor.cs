@@ -11,6 +11,8 @@ public static class SolrExecutor
         settings.ValidateSolrReadOnly();
 
         var target = SolrExecutionRepository.ReadTarget(connection, settings, mutationId);
+        BaselineEnrollmentService.RequireApproved(connection, settings, target.CandidateId,
+            apply ? "Step 11 Solr execution" : "Step 11 preflight");
         var items = SolrExecutionRepository.ReadItems(connection, target);
         var preflight = ValidateLiveState(settings, connection, workerRoot, target, items);
 

@@ -1,0 +1,105 @@
+{
+  "step": "14C",
+  "static_checks": [
+    {
+      "name": "json importer.example.json",
+      "pass": true,
+      "detail": "valid JSON"
+    },
+    {
+      "name": "json importer.step14b.pilot.json",
+      "pass": true,
+      "detail": "valid JSON"
+    },
+    {
+      "name": "json step13.example.json",
+      "pass": true,
+      "detail": "valid JSON"
+    },
+    {
+      "name": "xml WazuhAuditImporter.csproj",
+      "pass": true,
+      "detail": "valid XML"
+    },
+    {
+      "name": "xml WazuhAuditImporter.SelfTests.csproj",
+      "pass": true,
+      "detail": "valid XML"
+    },
+    {
+      "name": "pipeline baseline capture before collector",
+      "pass": true,
+      "detail": "missing baselines captured before event collection"
+    },
+    {
+      "name": "pipeline pending gate",
+      "pass": true,
+      "detail": "pending candidates are withheld from action/payload/preflight stages"
+    },
+    {
+      "name": "Step10A direct gate",
+      "pass": true,
+      "detail": "manual action planning requires approved enrollment"
+    },
+    {
+      "name": "Step10B direct gate",
+      "pass": true,
+      "detail": "manual payload generation requires approved enrollment"
+    },
+    {
+      "name": "Step11 direct gate",
+      "pass": true,
+      "detail": "preflight and apply require approved enrollment"
+    },
+    {
+      "name": "baseline capture no Solr writer",
+      "pass": true,
+      "detail": "baseline uses SolrReadOnlyClient only"
+    },
+    {
+      "name": "history audit trail",
+      "pass": true,
+      "detail": "capture/approval history recorded"
+    },
+    {
+      "name": "schema tables guarded",
+      "pass": true,
+      "detail": "SchemaContract requires Step 14C tables"
+    },
+    {
+      "name": "Step14C tests",
+      "pass": true,
+      "detail": "108 self-test cases defined"
+    },
+    {
+      "name": "migration present",
+      "pass": true,
+      "detail": "MariaDB 10.1 migration included"
+    },
+    {
+      "name": "baseline wrappers present",
+      "pass": true,
+      "detail": "capture/status/approve/preflight wrappers included"
+    },
+    {
+      "name": "brace balance BaselineEnrollmentModels.cs",
+      "pass": true,
+      "detail": "{=2 }=2"
+    },
+    {
+      "name": "brace balance BaselineEnrollmentService.cs",
+      "pass": true,
+      "detail": "{=62 }=62"
+    },
+    {
+      "name": "brace balance BaselineEnrollmentRepository.cs",
+      "pass": true,
+      "detail": "{=28 }=28"
+    }
+  ],
+  "all_pass": true,
+  "runtime_build_required_on_mgmtnb08": true,
+  "notes": [
+    "Container has no .NET SDK; MGMTNB08 Restore-And-Preview remains authoritative compile/self-test gate."
+  ]
+}

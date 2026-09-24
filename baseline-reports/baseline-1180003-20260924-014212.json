@@ -1,0 +1,56 @@
+{
+  "Evidence": {
+    "CandidateId": "1180003",
+    "AccessibleCandidateFolder": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999\\1180003",
+    "CanonicalRoot": "G:\\Candidate\\To 1189999",
+    "DiskFileCount": 2,
+    "EligibleFileCount": 2,
+    "SkippedFileCount": 0,
+    "SolrDocumentCount": 2,
+    "MatchCount": 0,
+    "MissingCount": 2,
+    "StaleCount": 2,
+    "OtherConflictCount": 0,
+    "Comparisons": [
+      {
+        "Status": "STALE_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180003\\1180003 2025 03 09 Armstrong, Natalie Anne Scraped Seek TS Resume Profile 2025081911470285 NSYAHAR.txt",
+        "RelativePath": null,
+        "ExpectedLegacyId": null,
+        "SolrId": "1180003-2025-03-09-armstrong-natalie-anne-scraped-seek-ts-resume-profile-2025081911470285-nsyahartxt",
+        "SolrLastUpdate": "2026-02-23T02:55:34.425+00:00",
+        "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+      },
+      {
+        "Status": "MISSING_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180003\\1180003 2025 03 09 Armstrong, Natalie Anne Scraped Seek TS Resume Profile.txt",
+        "RelativePath": "1180003 2025 03 09 Armstrong, Natalie Anne Scraped Seek TS Resume Profile.txt",
+        "ExpectedLegacyId": "1180003-2025-03-09-armstrong-natalie-anne-scraped-seek-ts-resume-profiletxt",
+        "SolrId": null,
+        "SolrLastUpdate": null,
+        "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+      },
+      {
+        "Status": "STALE_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180003\\1180003 2025 03 16 Armstrong, Natalie Anne Scraped Seek TS Resume Profile 2025081911470904 FJAMES.txt",
+        "RelativePath": null,
+        "ExpectedLegacyId": null,
+        "SolrId": "1180003-2025-03-16-armstrong-natalie-anne-scraped-seek-ts-resume-profile-2025081911470904-fjamestxt",
+        "SolrLastUpdate": "2026-02-23T02:55:37.491+00:00",
+        "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+      },
+      {
+        "Status": "MISSING_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180003\\1180003 2025 03 16 Armstrong, Natalie Anne Scraped Seek TS Resume Profile.txt",
+        "RelativePath": "1180003 2025 03 16 Armstrong, Natalie Anne Scraped Seek TS Resume Profile.txt",
+        "ExpectedLegacyId": "1180003-2025-03-16-armstrong-natalie-anne-scraped-seek-ts-resume-profiletxt",
+        "SolrId": null,
+        "SolrLastUpdate": null,
+        "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+      }
+    ],
+    "LocalLegacyIdCollisions": []
+  },
+  "BaselineSha256": "2744ec81b3fcad34f012ee5ed5fc11dc06c64ad05b780fdf3ba969c5b0755214",
+  "CapturedAtUtc": "2026-09-24T01:42:12.3385181Z"
+}

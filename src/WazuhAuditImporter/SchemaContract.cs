@@ -118,6 +118,40 @@ public static class SchemaContract
             new("updated_at_utc", "datetime", null, false, null, null, false),
             new("applied_at_utc", "datetime", null, true, null, null, false),
             new("last_error", "text", null, true, null, null, false)
+        ],
+        ["candidate_baseline_enrollment"] = [
+            new("enrollment_id", "bigint", null, false, null, null, true),
+            new("source_instance", "varchar", 64, false, "ascii_bin", null, false),
+            new("agent_id", "varchar", 32, false, "ascii_bin", null, false),
+            new("candidate_id", "varchar", 32, false, "ascii_bin", null, false),
+            new("status", "enum", null, false, null, "enum('pending','approved')", false),
+            new("baseline_sha256", "char", 64, false, "ascii_bin", null, false),
+            new("disk_file_count", "int", null, false, null, null, false),
+            new("eligible_file_count", "int", null, false, null, null, false),
+            new("skipped_file_count", "int", null, false, null, null, false),
+            new("solr_document_count", "int", null, false, null, null, false),
+            new("match_count", "int", null, false, null, null, false),
+            new("missing_count", "int", null, false, null, null, false),
+            new("stale_count", "int", null, false, null, null, false),
+            new("other_conflict_count", "int", null, false, null, null, false),
+            new("baseline_json", "longtext", null, false, null, null, false),
+            new("captured_at_utc", "datetime", null, false, null, null, false),
+            new("updated_at_utc", "datetime", null, false, null, null, false),
+            new("approved_at_utc", "datetime", null, true, null, null, false),
+            new("approved_by", "varchar", 191, true, null, null, false),
+            new("approval_note", "varchar", 1000, true, null, null, false)
+        ],
+        ["candidate_baseline_enrollment_history"] = [
+            new("history_id", "bigint", null, false, null, null, true),
+            new("enrollment_id", "bigint", null, false, null, null, false),
+            new("source_instance", "varchar", 64, false, "ascii_bin", null, false),
+            new("agent_id", "varchar", 32, false, "ascii_bin", null, false),
+            new("candidate_id", "varchar", 32, false, "ascii_bin", null, false),
+            new("event_type", "enum", null, false, null, "enum('captured','approved')", false),
+            new("baseline_sha256", "char", 64, false, "ascii_bin", null, false),
+            new("detail_json", "longtext", null, false, null, null, false),
+            new("actor", "varchar", 191, true, null, null, false),
+            new("event_at_utc", "datetime", null, false, null, null, false)
         ]
     };
 
@@ -194,6 +228,8 @@ public static class SchemaContract
             ["idempotency_key"]);
         VerifyUnique(connection, "solr_action_payload", "uq_solr_payload_action",
             ["action_id"]);
+        VerifyUnique(connection, "candidate_baseline_enrollment", "uq_candidate_baseline_identity",
+            ["source_instance", "agent_id", "candidate_id"]);
         Console.WriteLine("Schema guard: required columns, InnoDB engines and deduplication indexes matched.");
     }
 

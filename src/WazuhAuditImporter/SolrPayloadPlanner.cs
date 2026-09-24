@@ -16,6 +16,7 @@ public static class SolrPayloadPlanner
     {
         settings.ValidateWorker(workerRoot, Path.Combine(Path.GetTempPath(), "wazuh-payload-validation"));
         settings.ValidateAllowedCandidate(candidateId);
+        BaselineEnrollmentService.RequireApproved(connection, settings, candidateId, "Step 10B payload generation");
         var target = SolrConcreteActionRepository.ReadLatestTarget(connection, settings, candidateId);
         var actions = SolrPayloadRepository.ReadActions(connection, target);
         if (actions.Any(x => x.ActionStatus != "planned"))

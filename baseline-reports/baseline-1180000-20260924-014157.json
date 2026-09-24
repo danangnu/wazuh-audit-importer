@@ -1,0 +1,92 @@
+{
+  "Evidence": {
+    "CandidateId": "1180000",
+    "AccessibleCandidateFolder": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999\\1180000",
+    "CanonicalRoot": "G:\\Candidate\\To 1189999",
+    "DiskFileCount": 4,
+    "EligibleFileCount": 4,
+    "SkippedFileCount": 0,
+    "SolrDocumentCount": 4,
+    "MatchCount": 0,
+    "MissingCount": 4,
+    "StaleCount": 4,
+    "OtherConflictCount": 0,
+    "Comparisons": [
+      {
+        "Status": "STALE_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\1180000 2025 03 10 Wynne, Leanne Scraped Seek TS Resume Profile 2025081911391519 NPUTRI.txt",
+        "RelativePath": null,
+        "ExpectedLegacyId": null,
+        "SolrId": "1180000-2025-03-10-wynne-leanne-scraped-seek-ts-resume-profile-2025081911391519-nputritxt",
+        "SolrLastUpdate": "2026-04-10T10:22:16.351+00:00",
+        "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+      },
+      {
+        "Status": "STALE_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\1180000 2025 10 13 Wynne, Leanne Scraped Seek TS Resume Profile 2025101312082844 MJULIAR.txt",
+        "RelativePath": null,
+        "ExpectedLegacyId": null,
+        "SolrId": "1180000-2025-10-13-wynne-leanne-scraped-seek-ts-resume-profile-2025101312082844-mjuliartxt",
+        "SolrLastUpdate": "2026-04-10T10:22:19.767+00:00",
+        "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+      },
+      {
+        "Status": "STALE_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\1180000 2026 03 18 Wynne, Leanne Scraped Seek TS Resume Profile 2026031815120622 JTHOMPSON.txt",
+        "RelativePath": null,
+        "ExpectedLegacyId": null,
+        "SolrId": "1180000-2026-03-18-wynne-leanne-scraped-seek-ts-resume-profile-2026031815120622-jthompsontxt",
+        "SolrLastUpdate": "2026-04-10T10:22:22.669+00:00",
+        "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+      },
+      {
+        "Status": "STALE_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\1180000 2026 04 09 Wynne, Leanne Scraped Seek TS Resume Profile 2026040915102978 AMARTIN.txt",
+        "RelativePath": null,
+        "ExpectedLegacyId": null,
+        "SolrId": "1180000-2026-04-09-wynne-leanne-scraped-seek-ts-resume-profile-2026040915102978-amartintxt",
+        "SolrLastUpdate": "2026-04-10T10:22:25.37+00:00",
+        "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+      },
+      {
+        "Status": "MISSING_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\1180000 2026 04 09 Wynne, Leanne Scraped Seek TS Resume Profile.txt",
+        "RelativePath": "1180000 2026 04 09 Wynne, Leanne Scraped Seek TS Resume Profile.txt",
+        "ExpectedLegacyId": "1180000-2026-04-09-wynne-leanne-scraped-seek-ts-resume-profiletxt",
+        "SolrId": null,
+        "SolrLastUpdate": null,
+        "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+      },
+      {
+        "Status": "MISSING_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\Test document index 18 09 2026 - 9 08 AM.txt",
+        "RelativePath": "Test document index 18 09 2026 - 9 08 AM.txt",
+        "ExpectedLegacyId": "test-document-index-18-09-2026--9-08-amtxt",
+        "SolrId": null,
+        "SolrLastUpdate": null,
+        "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+      },
+      {
+        "Status": "MISSING_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\Test document index 18 09 2026 - 9 52 AM.txt",
+        "RelativePath": "Test document index 18 09 2026 - 9 52 AM.txt",
+        "ExpectedLegacyId": "test-document-index-18-09-2026--9-52-amtxt",
+        "SolrId": null,
+        "SolrLastUpdate": null,
+        "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+      },
+      {
+        "Status": "MISSING_IN_SOLR",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\Test document index 18 09 2026.txt",
+        "RelativePath": "Test document index 18 09 2026.txt",
+        "ExpectedLegacyId": "test-document-index-18-09-2026txt",
+        "SolrId": null,
+        "SolrLastUpdate": null,
+        "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+      }
+    ],
+    "LocalLegacyIdCollisions": []
+  },
+  "BaselineSha256": "e828d0afffd1c1d1888636335d7b39548ce094bf3dc7c0845672249e90b4d81e",
+  "CapturedAtUtc": "2026-09-24T01:41:57.6171166Z"
+}

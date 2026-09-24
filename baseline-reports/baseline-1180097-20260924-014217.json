@@ -1,0 +1,29 @@
+{
+  "Evidence": {
+    "CandidateId": "1180097",
+    "AccessibleCandidateFolder": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999\\1180097",
+    "CanonicalRoot": "G:\\Candidate\\To 1189999",
+    "DiskFileCount": 1,
+    "EligibleFileCount": 1,
+    "SkippedFileCount": 0,
+    "SolrDocumentCount": 1,
+    "MatchCount": 1,
+    "MissingCount": 0,
+    "StaleCount": 0,
+    "OtherConflictCount": 0,
+    "Comparisons": [
+      {
+        "Status": "MATCH",
+        "CanonicalPath": "G:\\Candidate\\To 1189999\\1180097\\WAZUH_SOLR_CONTENT_TEST.txt",
+        "RelativePath": "WAZUH_SOLR_CONTENT_TEST.txt",
+        "ExpectedLegacyId": "wazuh-solr-content-testtxt",
+        "SolrId": "wazuh-solr-content-testtxt",
+        "SolrLastUpdate": "2026-09-23T04:31:49.684+00:00",
+        "Detail": null
+      }
+    ],
+    "LocalLegacyIdCollisions": []
+  },
+  "BaselineSha256": "eeb255eb8408c5569c23ecafa05be89c26e965076336f1897bab845c812064da",
+  "CapturedAtUtc": "2026-09-24T01:42:17.2781063Z"
+}
