@@ -960,6 +960,49 @@ cases.Add(("Step 14E legacy reference comparison is explicitly approximate", () 
     Assert(result.Caveat.Contains("not a controlled benchmark", StringComparison.Ordinal));
 }));
 
+
+// Step 16 baseline triage / clean-only enrollment policy
+cases.Add(("Step 16 clean pending baseline is eligible for clean-only approval", () =>
+{
+    var d = BaselineTriagePolicy.Classify("pending", true, 6, 6, 6, 0, 0, 0);
+    Assert(d == BaselineTriageDisposition.CleanPending);
+    Assert(BaselineTriagePolicy.IsClean(6, 6, 0, 0, 0));
+}));
+
+cases.Add(("Step 16 high historical drift remains separately gated", () =>
+{
+    var d = BaselineTriagePolicy.Classify("pending", true, 6, 161, 3, 3, 158, 0);
+    Assert(d == BaselineTriageDisposition.HighDrift);
+}));
+
+cases.Add(("Step 16 small drift is not clean-approval eligible", () =>
+{
+    var d = BaselineTriagePolicy.Classify("pending", true, 1, 1, 0, 1, 1, 0);
+    Assert(d == BaselineTriageDisposition.SmallDrift);
+    Assert(!BaselineTriagePolicy.IsClean(1, 0, 1, 1, 0));
+}));
+
+cases.Add(("Step 16 stale captured fingerprint blocks otherwise clean baseline", () =>
+{
+    var d = BaselineTriagePolicy.Classify("pending", false, 1, 1, 1, 0, 0, 0);
+    Assert(d == BaselineTriageDisposition.StaleCapture);
+}));
+
+cases.Add(("Step 16 clean-only policy rejects drifted pending baseline", () =>
+{
+    var snap = new BaselineEnrollmentSnapshot(1, "1180004", "pending", new string('a', 64),
+        1, 1, 0, 5, 0, 1, 5, 0, DateTime.UtcNow, null, null, null);
+    try
+    {
+        BaselineTriagePolicy.RequireCleanPending(snap);
+    }
+    catch (EventConflictException)
+    {
+        return;
+    }
+    throw new Exception("Expected Step 16 clean-only drift rejection.");
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -967,6 +1010,6 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E/Step16 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;
 

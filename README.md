@@ -1,3 +1,34 @@
+# Step 16 — baseline triage and controlled clean enrollment
+
+Step 16 keeps the Step 15 exact 25-candidate scope and adds a **read-only triage layer** plus a **clean-only baseline approval gate**. It does not widen FIM again, does not add a database migration, and does not enable automatic Solr apply.
+
+The Step 15 pilot currently has two approved candidates and 23 pending baselines. Step 16 first revalidates each pending baseline live, classifies it, and permits individual approval only when the stored fingerprint is unchanged and the candidate is fully synchronized (`missing=0`, `stale=0`, `other=0`, `match=eligible`).
+
+## Step 16 commands
+
+```powershell
+.\Step16-Preflight.cmd
+.\Step16-Triage.cmd
+.\Step16-Approve-Clean.cmd <candidate-id> <baseline-sha256>
+.\Step16-Approve-Clean.cmd <candidate-id> <baseline-sha256> --apply
+.\Step16-PostApproval-Check.cmd
+```
+
+The first approval command is a preview. `--apply` records baseline approval in MariaDB only after exact SHA and live clean-state revalidation. Drifted, conflicted or stale captures are rejected by the clean-only command.
+
+Expected build gate after merging this package:
+
+```text
+Build succeeded.
+0 Warning(s)
+0 Error(s)
+Self-tests: 130/130 passed; 0 failed.
+```
+
+See `docs/STEP16_ACCEPTANCE.md` for the acceptance sequence and live-test procedure.
+
+---
+
 # Step 15 — controlled 25-candidate rollout
 
 Step 15 expands the validated five-candidate Step 14 pilot to an **explicit 25-candidate cohort** while retaining the Step 14C baseline enrollment gate, Step 14D failure/recovery safeguards, Step 13 supervisor recovery, and manual Step 11 Solr approval.

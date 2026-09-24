@@ -14,8 +14,8 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-collision-audit" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-status" or "baseline-capture" or "baseline-approve" or "recovery-inspect" or "pilot-report" or "pipeline-once" or "pipeline"))
-                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-collision-audit, solr-plan-actions, solr-build-payloads, solr-execute, baseline-status, baseline-capture, baseline-approve, recovery-inspect, pilot-report, pipeline-once, pipeline or help.");
+            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-collision-audit" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-status" or "baseline-capture" or "baseline-approve" or "baseline-triage" or "baseline-approve-clean" or "recovery-inspect" or "pilot-report" or "pipeline-once" or "pipeline"))
+                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-collision-audit, solr-plan-actions, solr-build-payloads, solr-execute, baseline-status, baseline-capture, baseline-approve, baseline-triage, baseline-approve-clean, recovery-inspect, pilot-report, pipeline-once, pipeline or help.");
             string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null, candidateIdsCsv = null, candidateId = null;
             string? baselineSha256 = null, reviewer = null, approvalNote = null;
             ulong? mutationId = null;
@@ -37,7 +37,7 @@ public static class Cli
                 if (!seen.Add(option)) throw new FormatException("Repeated option: " + option);
                 if (option == "--apply")
                 {
-                    if (command is not ("import" or "solr-execute" or "baseline-approve")) throw new FormatException("--apply is only valid with import, solr-execute or baseline-approve.");
+                    if (command is not ("import" or "solr-execute" or "baseline-approve" or "baseline-approve-clean")) throw new FormatException("--apply is only valid with import, solr-execute, baseline-approve or baseline-approve-clean.");
                     apply = true;
                 }
                 else if (option == "--mutation-id")
@@ -75,29 +75,29 @@ public static class Cli
                 }
                 else if (option == "--candidate-id")
                 {
-                    if (command is not ("solr-plan-actions" or "solr-build-payloads" or "baseline-capture" or "baseline-approve" or "recovery-inspect"))
-                        throw new FormatException("--candidate-id is only valid with solr-plan-actions, solr-build-payloads, baseline-capture, baseline-approve or recovery-inspect.");
+                    if (command is not ("solr-plan-actions" or "solr-build-payloads" or "baseline-capture" or "baseline-approve" or "baseline-triage" or "baseline-approve-clean" or "recovery-inspect"))
+                        throw new FormatException("--candidate-id is only valid with solr-plan-actions, solr-build-payloads, baseline-capture, baseline-approve, baseline-triage, baseline-approve-clean or recovery-inspect.");
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
                         throw new FormatException("--candidate-id requires a candidate ID value.");
                     candidateId = args[i++];
                 }
                 else if (option == "--baseline-sha256")
                 {
-                    if (command != "baseline-approve") throw new FormatException("--baseline-sha256 is only valid with baseline-approve.");
+                    if (command is not ("baseline-approve" or "baseline-approve-clean")) throw new FormatException("--baseline-sha256 is only valid with baseline-approve or baseline-approve-clean.");
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
                         throw new FormatException("--baseline-sha256 requires a 64-character SHA-256 value.");
                     baselineSha256 = args[i++];
                 }
                 else if (option == "--reviewer")
                 {
-                    if (command != "baseline-approve") throw new FormatException("--reviewer is only valid with baseline-approve.");
+                    if (command is not ("baseline-approve" or "baseline-approve-clean")) throw new FormatException("--reviewer is only valid with baseline-approve or baseline-approve-clean.");
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
                         throw new FormatException("--reviewer requires a value.");
                     reviewer = args[i++];
                 }
                 else if (option == "--approval-note")
                 {
-                    if (command != "baseline-approve") throw new FormatException("--approval-note is only valid with baseline-approve.");
+                    if (command is not ("baseline-approve" or "baseline-approve-clean")) throw new FormatException("--approval-note is only valid with baseline-approve or baseline-approve-clean.");
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
                         throw new FormatException("--approval-note requires a value.");
                     approvalNote = args[i++];
@@ -132,6 +132,10 @@ public static class Cli
                 "baseline-approve" => apply
                     ? "Step 14C baseline approval. Revalidates the exact captured baseline, then records operator approval in MariaDB only. No Solr writes.\n"
                     : "Step 14C baseline approval preview. Revalidates the exact captured baseline; no status or Solr writes.\n",
+                "baseline-triage" => "Step 16 read-only baseline triage. Revalidates pending captures against FLOSVR01 metadata + Solr GET and writes local reports only. No approvals or Solr writes.\n",
+                "baseline-approve-clean" => apply
+                    ? "Step 16 clean-only baseline approval. Requires exact live fingerprint plus zero missing/stale/conflicts, then records approval in MariaDB only. No Solr writes.\n"
+                    : "Step 16 clean-only approval preview. Requires exact live fingerprint plus zero missing/stale/conflicts; no status or Solr writes.\n",
                 "recovery-inspect" => "Step 14D read-only recovery inspection. Reads MariaDB state plus FLOSVR01 metadata/Solr GET. Never retries or writes Solr.\n",
                 "pilot-report" => "Step 14E pilot metrics/report. Reads MariaDB, FLOSVR01 metadata and Solr GET only; writes report files only. No Solr writes.\n",
                 "pipeline-once" or "pipeline" => settings.CandidateIds.Length > 1
@@ -194,14 +198,14 @@ public static class Cli
                 return SolrCollisionAudit.Run(settings, workerRoot, reportDir, candidateLimit, maxIdLookups, explicitIds);
             }
 
-            if ((command is "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-capture" or "baseline-approve" or "recovery-inspect" or "pilot-report") && string.IsNullOrWhiteSpace(workerRoot))
+            if ((command is "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-capture" or "baseline-approve" or "baseline-triage" or "baseline-approve-clean" or "recovery-inspect" or "pilot-report") && string.IsNullOrWhiteSpace(workerRoot))
                 throw new FormatException($"{command} requires --worker-root <accessible FLOSVR01 candidate root>.");
             if (command == "solr-execute" && mutationId is null)
                 throw new FormatException("solr-execute requires --mutation-id <positive integer>.");
-            if (command == "baseline-approve")
+            if (command is "baseline-approve" or "baseline-approve-clean")
             {
-                if (string.IsNullOrWhiteSpace(candidateId)) throw new FormatException("baseline-approve requires --candidate-id <id>.");
-                if (string.IsNullOrWhiteSpace(baselineSha256)) throw new FormatException("baseline-approve requires --baseline-sha256 <sha256>.");
+                if (string.IsNullOrWhiteSpace(candidateId)) throw new FormatException($"{command} requires --candidate-id <id>.");
+                if (string.IsNullOrWhiteSpace(baselineSha256)) throw new FormatException($"{command} requires --baseline-sha256 <sha256>.");
             }
 
             if ((command is "work-once" or "work" or "pipeline-once" or "pipeline") && string.IsNullOrWhiteSpace(workerRoot))
@@ -285,6 +289,16 @@ public static class Cli
             {
                 reviewer ??= Environment.UserDomainName + "\\" + Environment.UserName;
                 _ = BaselineEnrollmentService.Approve(settings, connection, workerRoot!, candidateId!, baselineSha256!, reviewer, approvalNote, apply);
+                return 0;
+            }
+            if (command == "baseline-triage")
+            {
+                return BaselineTriageService.Run(settings, connection, workerRoot!, reportDir, candidateId);
+            }
+            if (command == "baseline-approve-clean")
+            {
+                reviewer ??= Environment.UserDomainName + "\\" + Environment.UserName;
+                _ = BaselineTriageService.ApproveClean(settings, connection, workerRoot!, candidateId!, baselineSha256!, reviewer, approvalNote, apply);
                 return 0;
             }
             if (command == "recovery-inspect")
@@ -496,6 +510,13 @@ public static class Cli
                            --baseline-sha256 <sha>
                            --worker-root <root>
                            [--reviewer <name>] [--approval-note <text>] [--apply]
+          baseline-triage --worker-root <root>      Step 16: revalidate/classify pending baselines as clean/small/moderate/high/conflict/stale.
+                          [--candidate-id <id>]      Read/report only; no baseline status or Solr writes.
+                          [--report-dir <dir>]
+          baseline-approve-clean --candidate-id <id> Step 16: clean-only approval. Rejects any missing/stale/conflict drift.
+                                 --baseline-sha256 <sha>
+                                 --worker-root <root>
+                                 [--reviewer <name>] [--approval-note <text>] [--apply]
           recovery-inspect --worker-root <root>      Step 14D: read-only recovery inspection of latest mutation state
                            [--candidate-id <id>]      for one or every allowlisted candidate. Optionally select a specific
                            [--mutation-id <id>]       mutation. processing/failed states are never authorized for blind retry.
@@ -533,5 +554,8 @@ public static class Cli
         Step 14E adds read-only pilot metrics and a delivery report. It derives observed event/ingest/worker/
         payload/apply timings from persisted UTC timestamps and does not claim a legacy-scan speedup unless
         an operator supplies a measured --legacy-scan-seconds reference.
+        Step 16 adds read-only baseline triage plus a clean-only approval command. Pending baselines are
+        revalidated live; only exact, fully matched baselines can pass clean-only approval. Drifted, conflicted
+        or stale captures stay gated and require separate operator review. No Step 16 command auto-applies Solr.
         """);
 }

@@ -1,0 +1,10 @@
+{
+  "step": "16",
+  "scope": "baseline triage and controlled clean enrollment",
+  "database_migration_required": false,
+  "automatic_solr_apply": false,
+  "new_commands": ["baseline-triage", "baseline-approve-clean"],
+  "new_scripts": ["Step16-Preflight.cmd", "Step16-Triage.cmd", "Step16-Approve-Clean.cmd", "Step16-Baseline-Status.cmd", "Step16-PostApproval-Check.cmd"],
+  "expected_self_test_count": 130,
+  "notes": "Static package preparation only. Fixed the Step 16 negative self-test harness so the expected EventConflictException from clean-only drift rejection is treated as PASS. Production clean-only approval logic is unchanged. Compile/runtime validation must be performed on MGMTNB08 with .NET 9 and the pilot infrastructure."
+}
