@@ -1,0 +1,41 @@
+{
+  "GeneratedAtUtc": "2026-09-24T08:42:48.8009432Z",
+  "Rows": [
+    {
+      "CandidateId": "1180022",
+      "BaselineSha256": "c57d4a9d49a7c5ff8f250e1b7295e373a8aabdffc72eb8a8407f37bc2b3b5f7b",
+      "FingerprintMatch": true,
+      "DiskFileCount": 4,
+      "EligibleFileCount": 4,
+      "SolrDocumentCount": 4,
+      "MatchCount": 3,
+      "MissingCount": 1,
+      "StaleCount": 1,
+      "OtherConflictCount": 0,
+      "EligibleForStep19Approval": true,
+      "Missing": [
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180022\\1180022 2025 07 23 Goerke, Dylan Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180022 2025 07 23 Goerke, Dylan Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180022-2025-07-23-goerke-dylan-scraped-seek-ts-resume-profiletxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        }
+      ],
+      "Stale": [
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180022\\1180022 2025 07 23 Goerke, Dylan Scraped Seek TS Resume Profile 2025112116010615 AARIYAN.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180022-2025-07-23-goerke-dylan-scraped-seek-ts-resume-profile-2025112116010615-aariyantxt",
+          "SolrLastUpdate": "2026-07-14T20:58:05.67+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        }
+      ],
+      "Detail": "Eligible for the controlled Step 19 one-for-one SmallDrift approval after exact operator review."
+    }
+  ]
+}

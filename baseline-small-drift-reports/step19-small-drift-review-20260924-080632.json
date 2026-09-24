@@ -1,0 +1,41 @@
+{
+  "GeneratedAtUtc": "2026-09-24T08:06:32.8664062Z",
+  "Rows": [
+    {
+      "CandidateId": "1180015",
+      "BaselineSha256": "7006234bc04a91c52135b3814b5693f1bb61c92a04adcc559f3ae3ce2ed476ec",
+      "FingerprintMatch": true,
+      "DiskFileCount": 1,
+      "EligibleFileCount": 1,
+      "SolrDocumentCount": 1,
+      "MatchCount": 0,
+      "MissingCount": 1,
+      "StaleCount": 1,
+      "OtherConflictCount": 0,
+      "EligibleForStep19Approval": true,
+      "Missing": [
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180015\\1180015 2025 08 18 Jensen, Stine Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180015 2025 08 18 Jensen, Stine Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180015-2025-08-18-jensen-stine-scraped-seek-ts-resume-profiletxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        }
+      ],
+      "Stale": [
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180015\\1180015 2025 08 18 Jensen, Stine Scraped Seek TS Resume Profile 2025081912102036 NPUTRI.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180015-2025-08-18-jensen-stine-scraped-seek-ts-resume-profile-2025081912102036-nputritxt",
+          "SolrLastUpdate": "2026-07-20T08:43:12.258+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        }
+      ],
+      "Detail": "Eligible for the controlled Step 19 one-for-one SmallDrift approval after exact operator review."
+    }
+  ]
+}

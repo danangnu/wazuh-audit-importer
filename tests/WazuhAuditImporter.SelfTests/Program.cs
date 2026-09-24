@@ -1064,6 +1064,35 @@ cases.Add(("Step 18 rejects out-of-batch approval even with one-for-one drift", 
     throw new Exception("Expected Step 18 expansion-batch rejection.");
 }));
 
+cases.Add(("Step 19 batch is disjoint from the closed Step 17 and Step 18 batches", () =>
+{
+    Assert(Step19SmallDriftPolicy.ExpansionBatch.OrderBy(x => x, StringComparer.Ordinal)
+        .SequenceEqual(new[] { "1180015", "1180021", "1180022" }));
+    Assert(Step19SmallDriftPolicy.ExpansionBatch.All(x =>
+        !Step17SmallDriftPolicy.IsPilotCandidate(x) && !Step18SmallDriftPolicy.IsExpansionCandidate(x)));
+}));
+
+cases.Add(("Step 19 accepts only matching pending one-for-one drift including partial matches", () =>
+{
+    Assert(Step19SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", true, 1, 1, 0, 1, 1, 0));
+    Assert(Step19SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", true, 3, 3, 2, 1, 1, 0));
+    Assert(Step19SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", true, 4, 4, 3, 1, 1, 0));
+    Assert(!Step19SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", false, 3, 3, 2, 1, 1, 0));
+    Assert(!Step19SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", true, 1, 2, 0, 1, 2, 0));
+    Assert(!Step19SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", true, 2, 1, 1, 1, 0, 0));
+    Assert(!Step19SmallDriftPolicy.IsSimpleOneForOneSmallDrift("approved", true, 3, 3, 2, 1, 1, 0));
+}));
+
+cases.Add(("Step 19 rejects high drift and candidates outside its exact batch", () =>
+{
+    foreach (var id in new[] { "1180008", "1180011", "1180012", "1180014", "1180016", "1180019", "1180023" })
+    {
+        try { Step19SmallDriftPolicy.RequireExpansionCandidate(id); }
+        catch (EventConflictException) { continue; }
+        throw new Exception("Expected Step 19 scope rejection for " + id);
+    }
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -1071,5 +1100,5 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E/Step16/Step17/Step18 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E/Step16/Step17/Step18/Step19 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;

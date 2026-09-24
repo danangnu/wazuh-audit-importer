@@ -1,4 +1,8 @@
-# Step 18 — controlled SmallDrift expansion
+# Step 19 — third controlled SmallDrift batch
+
+Step 19 selects only 1180015, 1180021, and 1180022 from the latest read-only Step 16 triage. Start with `Step19-Review-SmallDrift.cmd`; each candidate requires a fresh matching fingerprint and exactly one missing and one stale document. Individual approval only records MariaDB enrollment. All later Solr changes still require reviewed Step 11 preflight and explicit manual apply. See `docs/STEP19_ACCEPTANCE.md`. Prior Step 17/18 policies and the 25-candidate FIM allowlist remain unchanged.
+
+## Earlier Step 18 expansion
 
 Step 18 adds a separate three-candidate review and individual baseline approval path for 1180011, 1180012 and 1180014. Start with `Step18-Review-SmallDrift.cmd`; approval previews are read-only, and approval `--apply` records only MariaDB enrollment. Every later Solr mutation still requires a reviewed Step 11 preflight and an explicit, separate `--apply`. See `docs/STEP18_ACCEPTANCE.md` for the rollout gates. The Step 17 batch and FIM allowlist remain unchanged.
 

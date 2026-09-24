@@ -1,0 +1,41 @@
+{
+  "GeneratedAtUtc": "2026-09-24T08:21:03.7290651Z",
+  "Rows": [
+    {
+      "CandidateId": "1180021",
+      "BaselineSha256": "ea08fd8c4029ca9da4aece59e7c38d5ffcb101a7055c5770bc1cf9931fd56e8f",
+      "FingerprintMatch": true,
+      "DiskFileCount": 3,
+      "EligibleFileCount": 3,
+      "SolrDocumentCount": 3,
+      "MatchCount": 2,
+      "MissingCount": 1,
+      "StaleCount": 1,
+      "OtherConflictCount": 0,
+      "EligibleForStep19Approval": true,
+      "Missing": [
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180021\\1180021 2025 11 15 Preston, Charlie Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180021 2025 11 15 Preston, Charlie Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180021-2025-11-15-preston-charlie-scraped-seek-ts-resume-profiletxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        }
+      ],
+      "Stale": [
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180021\\1180021 2025 11 15 20987324 Scraped Seek TS Resume Profile 2025111709131954 WELLINGTON.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180021-2025-11-15-20987324-scraped-seek-ts-resume-profile-2025111709131954-wellingtontxt",
+          "SolrLastUpdate": "2026-07-02T00:40:10.392+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        }
+      ],
+      "Detail": "Eligible for the controlled Step 19 one-for-one SmallDrift approval after exact operator review."
+    }
+  ]
+}
