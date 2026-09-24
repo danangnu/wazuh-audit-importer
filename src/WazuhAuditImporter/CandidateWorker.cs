@@ -5,7 +5,8 @@ namespace WazuhAuditImporter;
 public enum WorkerRunKind
 {
     NoWork,
-    Processed
+    Processed,
+    Failed
 }
 
 public sealed record WorkerRunOutcome(
@@ -13,7 +14,8 @@ public sealed record WorkerRunOutcome(
     string? CandidateId = null,
     ulong? ClaimedVersion = null,
     string? CompletionStatus = null,
-    ulong? CompletedVersion = null);
+    ulong? CompletedVersion = null,
+    string? Error = null);
 
 public static class CandidateWorker
 {
@@ -48,7 +50,8 @@ public static class CandidateWorker
         MySqlConnection connection,
         string workerRoot,
         string stateDirectory,
-        bool quietNoWork)
+        bool quietNoWork,
+        bool returnFailureOutcome = false)
     {
         settings.ValidateWorker(workerRoot, stateDirectory);
         var claim = WorkerRepository.ClaimNext(connection, settings);
@@ -135,6 +138,17 @@ public static class CandidateWorker
             catch (Exception failEx)
             {
                 Console.Error.WriteLine("WARNING: worker failure could not be recorded safely: " + failEx.Message);
+            }
+            if (returnFailureOutcome && ex is (DirectoryNotFoundException or UnauthorizedAccessException or IOException))
+            {
+                Console.Error.WriteLine($"Step 14D isolated candidate failure: candidate={claim.CandidateId}; other due candidates may continue this cycle.");
+                return new WorkerRunOutcome(
+                    WorkerRunKind.Failed,
+                    claim.CandidateId,
+                    claim.ClaimedVersion,
+                    "retry",
+                    claim.PriorCompletedVersion,
+                    ex.Message);
             }
             throw;
         }

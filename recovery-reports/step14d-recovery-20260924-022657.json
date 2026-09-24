@@ -1,0 +1,319 @@
+[
+  {
+    "CandidateId": "1180000",
+    "Mutation": {
+      "MutationId": 11,
+      "CandidateId": "1180000",
+      "WorkerVersion": 4,
+      "Operation": "reindex_candidate",
+      "Status": "planned",
+      "AttemptCount": 0,
+      "LastError": null,
+      "Actions": {
+        "Total": 0,
+        "Planned": 0,
+        "Processing": 0,
+        "Applied": 0,
+        "Failed": 0,
+        "Skipped": 0
+      }
+    },
+    "Disposition": 2,
+    "BlindRetryAllowed": false,
+    "Detail": "Mutation remains planned. Use the normal Step 10/11 gates; this recovery command never retries or applies it.",
+    "LiveEvidence": {
+      "CandidateId": "1180000",
+      "AccessibleCandidateFolder": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999\\1180000",
+      "CanonicalRoot": "G:\\Candidate\\To 1189999",
+      "DiskFileCount": 4,
+      "EligibleFileCount": 4,
+      "SkippedFileCount": 0,
+      "SolrDocumentCount": 4,
+      "MatchCount": 0,
+      "MissingCount": 4,
+      "StaleCount": 4,
+      "OtherConflictCount": 0,
+      "Comparisons": [
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\1180000 2025 03 10 Wynne, Leanne Scraped Seek TS Resume Profile 2025081911391519 NPUTRI.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180000-2025-03-10-wynne-leanne-scraped-seek-ts-resume-profile-2025081911391519-nputritxt",
+          "SolrLastUpdate": "2026-04-10T10:22:16.351+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        },
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\1180000 2025 10 13 Wynne, Leanne Scraped Seek TS Resume Profile 2025101312082844 MJULIAR.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180000-2025-10-13-wynne-leanne-scraped-seek-ts-resume-profile-2025101312082844-mjuliartxt",
+          "SolrLastUpdate": "2026-04-10T10:22:19.767+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        },
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\1180000 2026 03 18 Wynne, Leanne Scraped Seek TS Resume Profile 2026031815120622 JTHOMPSON.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180000-2026-03-18-wynne-leanne-scraped-seek-ts-resume-profile-2026031815120622-jthompsontxt",
+          "SolrLastUpdate": "2026-04-10T10:22:22.669+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        },
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\1180000 2026 04 09 Wynne, Leanne Scraped Seek TS Resume Profile 2026040915102978 AMARTIN.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180000-2026-04-09-wynne-leanne-scraped-seek-ts-resume-profile-2026040915102978-amartintxt",
+          "SolrLastUpdate": "2026-04-10T10:22:25.37+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        },
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\1180000 2026 04 09 Wynne, Leanne Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180000 2026 04 09 Wynne, Leanne Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180000-2026-04-09-wynne-leanne-scraped-seek-ts-resume-profiletxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        },
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\Test document index 18 09 2026 - 9 08 AM.txt",
+          "RelativePath": "Test document index 18 09 2026 - 9 08 AM.txt",
+          "ExpectedLegacyId": "test-document-index-18-09-2026--9-08-amtxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        },
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\Test document index 18 09 2026 - 9 52 AM.txt",
+          "RelativePath": "Test document index 18 09 2026 - 9 52 AM.txt",
+          "ExpectedLegacyId": "test-document-index-18-09-2026--9-52-amtxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        },
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180000\\Test document index 18 09 2026.txt",
+          "RelativePath": "Test document index 18 09 2026.txt",
+          "ExpectedLegacyId": "test-document-index-18-09-2026txt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        }
+      ],
+      "LocalLegacyIdCollisions": []
+    },
+    "LiveEvidenceError": null,
+    "CheckedAtUtc": "2026-09-24T02:26:40.1195148Z"
+  },
+  {
+    "CandidateId": "1180001",
+    "Mutation": {
+      "MutationId": 8,
+      "CandidateId": "1180001",
+      "WorkerVersion": 2,
+      "Operation": "reindex_candidate",
+      "Status": "applied",
+      "AttemptCount": 1,
+      "LastError": null,
+      "Actions": {
+        "Total": 5,
+        "Planned": 0,
+        "Processing": 0,
+        "Applied": 5,
+        "Failed": 0,
+        "Skipped": 0
+      }
+    },
+    "Disposition": 1,
+    "BlindRetryAllowed": false,
+    "Detail": "Latest mutation is terminal and internally consistent.",
+    "LiveEvidence": {
+      "CandidateId": "1180001",
+      "AccessibleCandidateFolder": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999\\1180001",
+      "CanonicalRoot": "G:\\Candidate\\To 1189999",
+      "DiskFileCount": 1,
+      "EligibleFileCount": 1,
+      "SkippedFileCount": 0,
+      "SolrDocumentCount": 1,
+      "MatchCount": 1,
+      "MissingCount": 0,
+      "StaleCount": 0,
+      "OtherConflictCount": 0,
+      "Comparisons": [
+        {
+          "Status": "MATCH",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180001\\1180001 2026 07 10 Thackwell, Chloe Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180001 2026 07 10 Thackwell, Chloe Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180001-2026-07-10-thackwell-chloe-scraped-seek-ts-resume-profiletxt",
+          "SolrId": "1180001-2026-07-10-thackwell-chloe-scraped-seek-ts-resume-profiletxt",
+          "SolrLastUpdate": "2026-09-23T08:47:31.619+00:00",
+          "Detail": null
+        }
+      ],
+      "LocalLegacyIdCollisions": []
+    },
+    "LiveEvidenceError": null,
+    "CheckedAtUtc": "2026-09-24T02:26:44.3079204Z"
+  },
+  {
+    "CandidateId": "1180002",
+    "Mutation": null,
+    "Disposition": 0,
+    "BlindRetryAllowed": false,
+    "Detail": "No mutation exists for this candidate.",
+    "LiveEvidence": {
+      "CandidateId": "1180002",
+      "AccessibleCandidateFolder": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999\\1180002",
+      "CanonicalRoot": "G:\\Candidate\\To 1189999",
+      "DiskFileCount": 1,
+      "EligibleFileCount": 1,
+      "SkippedFileCount": 0,
+      "SolrDocumentCount": 1,
+      "MatchCount": 0,
+      "MissingCount": 1,
+      "StaleCount": 1,
+      "OtherConflictCount": 0,
+      "Comparisons": [
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180002\\1180002 2025 03 11 Birch, Amelia Scraped Seek TS Resume Profile 2025081911434678 TPEMAYU.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180002-2025-03-11-birch-amelia-scraped-seek-ts-resume-profile-2025081911434678-tpemayutxt",
+          "SolrLastUpdate": "2026-02-23T02:55:50.228+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        },
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180002\\1180002 2025 03 11 Birch, Amelia Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180002 2025 03 11 Birch, Amelia Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180002-2025-03-11-birch-amelia-scraped-seek-ts-resume-profiletxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        }
+      ],
+      "LocalLegacyIdCollisions": []
+    },
+    "LiveEvidenceError": null,
+    "CheckedAtUtc": "2026-09-24T02:26:48.4904345Z"
+  },
+  {
+    "CandidateId": "1180003",
+    "Mutation": null,
+    "Disposition": 0,
+    "BlindRetryAllowed": false,
+    "Detail": "No mutation exists for this candidate.",
+    "LiveEvidence": {
+      "CandidateId": "1180003",
+      "AccessibleCandidateFolder": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999\\1180003",
+      "CanonicalRoot": "G:\\Candidate\\To 1189999",
+      "DiskFileCount": 2,
+      "EligibleFileCount": 2,
+      "SkippedFileCount": 0,
+      "SolrDocumentCount": 2,
+      "MatchCount": 0,
+      "MissingCount": 2,
+      "StaleCount": 2,
+      "OtherConflictCount": 0,
+      "Comparisons": [
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180003\\1180003 2025 03 09 Armstrong, Natalie Anne Scraped Seek TS Resume Profile 2025081911470285 NSYAHAR.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180003-2025-03-09-armstrong-natalie-anne-scraped-seek-ts-resume-profile-2025081911470285-nsyahartxt",
+          "SolrLastUpdate": "2026-02-23T02:55:34.425+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        },
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180003\\1180003 2025 03 09 Armstrong, Natalie Anne Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180003 2025 03 09 Armstrong, Natalie Anne Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180003-2025-03-09-armstrong-natalie-anne-scraped-seek-ts-resume-profiletxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        },
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180003\\1180003 2025 03 16 Armstrong, Natalie Anne Scraped Seek TS Resume Profile 2025081911470904 FJAMES.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180003-2025-03-16-armstrong-natalie-anne-scraped-seek-ts-resume-profile-2025081911470904-fjamestxt",
+          "SolrLastUpdate": "2026-02-23T02:55:37.491+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        },
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180003\\1180003 2025 03 16 Armstrong, Natalie Anne Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180003 2025 03 16 Armstrong, Natalie Anne Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180003-2025-03-16-armstrong-natalie-anne-scraped-seek-ts-resume-profiletxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        }
+      ],
+      "LocalLegacyIdCollisions": []
+    },
+    "LiveEvidenceError": null,
+    "CheckedAtUtc": "2026-09-24T02:26:53.0473454Z"
+  },
+  {
+    "CandidateId": "1180097",
+    "Mutation": {
+      "MutationId": 6,
+      "CandidateId": "1180097",
+      "WorkerVersion": 26,
+      "Operation": "reindex_candidate",
+      "Status": "applied",
+      "AttemptCount": 1,
+      "LastError": null,
+      "Actions": {
+        "Total": 1,
+        "Planned": 0,
+        "Processing": 0,
+        "Applied": 1,
+        "Failed": 0,
+        "Skipped": 0
+      }
+    },
+    "Disposition": 1,
+    "BlindRetryAllowed": false,
+    "Detail": "Latest mutation is terminal and internally consistent.",
+    "LiveEvidence": {
+      "CandidateId": "1180097",
+      "AccessibleCandidateFolder": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999\\1180097",
+      "CanonicalRoot": "G:\\Candidate\\To 1189999",
+      "DiskFileCount": 1,
+      "EligibleFileCount": 1,
+      "SkippedFileCount": 0,
+      "SolrDocumentCount": 1,
+      "MatchCount": 1,
+      "MissingCount": 0,
+      "StaleCount": 0,
+      "OtherConflictCount": 0,
+      "Comparisons": [
+        {
+          "Status": "MATCH",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180097\\WAZUH_SOLR_CONTENT_TEST.txt",
+          "RelativePath": "WAZUH_SOLR_CONTENT_TEST.txt",
+          "ExpectedLegacyId": "wazuh-solr-content-testtxt",
+          "SolrId": "wazuh-solr-content-testtxt",
+          "SolrLastUpdate": "2026-09-23T04:31:49.684+00:00",
+          "Detail": null
+        }
+      ],
+      "LocalLegacyIdCollisions": []
+    },
+    "LiveEvidenceError": null,
+    "CheckedAtUtc": "2026-09-24T02:26:57.6098676Z"
+  }
+]

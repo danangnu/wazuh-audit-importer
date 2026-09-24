@@ -816,6 +816,43 @@ cases.Add(("Step 12 decision treats applied mutation as complete", () =>
     Assert(d.Disposition == PipelineMutationDisposition.Complete);
 }));
 
+// Step 14D recovery/failure policy
+cases.Add(("Step 14D planned mutation requires normal preflight, not recovery retry", () =>
+{
+    var actions = new RecoveryActionCounts(2, 2, 0, 0, 0, 0);
+    Assert(RecoveryPolicy.Classify("planned", "reindex_candidate", actions) == RecoveryDisposition.PlannedRequiresNormalPreflight);
+}));
+
+cases.Add(("Step 14D processing mutation is uncertain and operator-blocked", () =>
+{
+    var actions = new RecoveryActionCounts(2, 0, 2, 0, 0, 0);
+    Assert(RecoveryPolicy.Classify("processing", "reindex_candidate", actions) == RecoveryDisposition.UncertainProcessing);
+}));
+
+cases.Add(("Step 14D failed mutation is uncertain and operator-blocked", () =>
+{
+    var actions = new RecoveryActionCounts(2, 0, 0, 0, 2, 0);
+    Assert(RecoveryPolicy.Classify("failed", "reindex_candidate", actions) == RecoveryDisposition.UncertainFailed);
+}));
+
+cases.Add(("Step 14D fully applied mutation is healthy terminal", () =>
+{
+    var actions = new RecoveryActionCounts(3, 0, 0, 3, 0, 0);
+    Assert(RecoveryPolicy.Classify("applied", "reindex_candidate", actions) == RecoveryDisposition.HealthyTerminal);
+}));
+
+cases.Add(("Step 14D inconsistent terminal action state is blocked", () =>
+{
+    var actions = new RecoveryActionCounts(3, 0, 0, 2, 1, 0);
+    Assert(RecoveryPolicy.Classify("applied", "reindex_candidate", actions) == RecoveryDisposition.Inconsistent);
+}));
+
+cases.Add(("Step 14D recovery inspection never authorizes blind retry", () =>
+{
+    foreach (RecoveryDisposition value in Enum.GetValues(typeof(RecoveryDisposition)))
+        Assert(!RecoveryPolicy.BlindRetryAllowed(value));
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -823,5 +860,6 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;
+

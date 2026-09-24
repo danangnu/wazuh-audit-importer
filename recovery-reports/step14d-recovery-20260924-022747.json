@@ -1,0 +1,52 @@
+[
+  {
+    "CandidateId": "1180001",
+    "Mutation": {
+      "MutationId": 8,
+      "CandidateId": "1180001",
+      "WorkerVersion": 2,
+      "Operation": "reindex_candidate",
+      "Status": "applied",
+      "AttemptCount": 1,
+      "LastError": null,
+      "Actions": {
+        "Total": 5,
+        "Planned": 0,
+        "Processing": 0,
+        "Applied": 5,
+        "Failed": 0,
+        "Skipped": 0
+      }
+    },
+    "Disposition": 1,
+    "BlindRetryAllowed": false,
+    "Detail": "Latest mutation is terminal and internally consistent.",
+    "LiveEvidence": {
+      "CandidateId": "1180001",
+      "AccessibleCandidateFolder": "\\\\FLOSVR01\\FastTrack\\Candidate\\To 1189999\\1180001",
+      "CanonicalRoot": "G:\\Candidate\\To 1189999",
+      "DiskFileCount": 1,
+      "EligibleFileCount": 1,
+      "SkippedFileCount": 0,
+      "SolrDocumentCount": 1,
+      "MatchCount": 1,
+      "MissingCount": 0,
+      "StaleCount": 0,
+      "OtherConflictCount": 0,
+      "Comparisons": [
+        {
+          "Status": "MATCH",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180001\\1180001 2026 07 10 Thackwell, Chloe Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180001 2026 07 10 Thackwell, Chloe Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180001-2026-07-10-thackwell-chloe-scraped-seek-ts-resume-profiletxt",
+          "SolrId": "1180001-2026-07-10-thackwell-chloe-scraped-seek-ts-resume-profiletxt",
+          "SolrLastUpdate": "2026-09-23T08:47:31.619+00:00",
+          "Detail": null
+        }
+      ],
+      "LocalLegacyIdCollisions": []
+    },
+    "LiveEvidenceError": null,
+    "CheckedAtUtc": "2026-09-24T02:27:47.6353934Z"
+  }
+]

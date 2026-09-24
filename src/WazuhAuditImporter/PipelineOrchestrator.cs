@@ -21,7 +21,7 @@ public static class PipelineOrchestrator
             workerRoot, stateDirectory, reportDirectory, cycle: 1);
         WriteState(settings, stateDirectory, summary);
         PrintCycleSummary(summary);
-        Console.WriteLine("\nSTEP 14C PIPELINE-ONCE COMPLETE. No Solr update/delete/add/commit request was issued.");
+        Console.WriteLine("\nSTEP 14D PIPELINE-ONCE COMPLETE. No Solr update/delete/add/commit request was issued.");
         return 0;
     }
 
@@ -43,7 +43,7 @@ public static class PipelineOrchestrator
             e.Cancel = true;
             if (!cancellation.IsCancellationRequested)
             {
-                Console.WriteLine("\nStop requested. Step 14C will exit after the current safe operation.");
+                Console.WriteLine("\nStop requested. Step 14D will exit after the current safe operation.");
                 cancellation.Cancel();
             }
         };
@@ -53,7 +53,7 @@ public static class PipelineOrchestrator
         long cycle = 0;
         try
         {
-            Console.WriteLine($"Step 14C baseline-gated multi-candidate pipeline started. poll={settings.OrchestratorPollSeconds}s; retry={settings.OrchestratorRetrySeconds}s");
+            Console.WriteLine($"Step 14D baseline-gated multi-candidate pipeline started. poll={settings.OrchestratorPollSeconds}s; retry={settings.OrchestratorRetrySeconds}s");
             Console.WriteLine($"Allowed candidates: {string.Join(",", settings.CandidateIds)}");
             Console.WriteLine($"Worker root : {Path.GetFullPath(workerRoot)}");
             Console.WriteLine($"State dir   : {Path.GetFullPath(stateDirectory)}");
@@ -80,48 +80,48 @@ public static class PipelineOrchestrator
                 {
                     ResetConnection(ref connection);
                     WriteFailureState(settings, stateDirectory, cycle, "TRANSIENT_DB_ERROR", ex.Message);
-                    Console.Error.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd'T'HH:mm:ss'Z'}] STEP14C TRANSIENT DB ERROR {ex.Number}: {ex.Message}");
+                    Console.Error.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd'T'HH:mm:ss'Z'}] STEP14D TRANSIENT DB ERROR {ex.Number}: {ex.Message}");
                     Console.Error.WriteLine($"No Solr write was attempted. Retrying in {settings.OrchestratorRetrySeconds}s.");
                     if (WaitOrCancelled(cancellation.Token, settings.OrchestratorRetrySeconds)) break;
                 }
                 catch (HttpRequestException ex)
                 {
                     WriteFailureState(settings, stateDirectory, cycle, "TRANSIENT_HTTP_ERROR", ex.Message);
-                    Console.Error.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd'T'HH:mm:ss'Z'}] STEP14C TRANSIENT HTTP ERROR: {ex.Message}");
+                    Console.Error.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd'T'HH:mm:ss'Z'}] STEP14D TRANSIENT HTTP ERROR: {ex.Message}");
                     Console.Error.WriteLine($"No Solr write was attempted. Check the Indexer tunnel/Solr GET connectivity; retrying in {settings.OrchestratorRetrySeconds}s.");
                     if (WaitOrCancelled(cancellation.Token, settings.OrchestratorRetrySeconds)) break;
                 }
                 catch (TaskCanceledException ex) when (!cancellation.IsCancellationRequested)
                 {
                     WriteFailureState(settings, stateDirectory, cycle, "TRANSIENT_TIMEOUT", ex.Message);
-                    Console.Error.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd'T'HH:mm:ss'Z'}] STEP14C TIMEOUT: {ex.Message}");
+                    Console.Error.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd'T'HH:mm:ss'Z'}] STEP14D TIMEOUT: {ex.Message}");
                     Console.Error.WriteLine($"No Solr write was attempted. Retrying in {settings.OrchestratorRetrySeconds}s.");
                     if (WaitOrCancelled(cancellation.Token, settings.OrchestratorRetrySeconds)) break;
                 }
                 catch (EventConflictException ex)
                 {
                     WriteFailureState(settings, stateDirectory, cycle, "DEFERRED_VERSION_RACE", ex.Message);
-                    Console.Error.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd'T'HH:mm:ss'Z'}] STEP14C DEFERRED: {ex.Message}");
+                    Console.Error.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd'T'HH:mm:ss'Z'}] STEP14D DEFERRED: {ex.Message}");
                     Console.Error.WriteLine($"A newer event/state won the race. No Solr write was attempted; retrying in {settings.OrchestratorRetrySeconds}s.");
                     if (WaitOrCancelled(cancellation.Token, settings.OrchestratorRetrySeconds)) break;
                 }
                 catch (Exception ex) when (ex is SolrConcreteActionException or SolrPayloadException or SolrExecutionException or SolrReadOnlyException)
                 {
                     WriteFailureState(settings, stateDirectory, cycle, "OPERATOR_BLOCKED", ex.Message);
-                    Console.Error.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd'T'HH:mm:ss'Z'}] STEP14C OPERATOR BLOCK: {ex.Message}");
+                    Console.Error.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd'T'HH:mm:ss'Z'}] STEP14D OPERATOR BLOCK: {ex.Message}");
                     Console.Error.WriteLine($"No Solr write was attempted. The pipeline will re-check in {settings.OrchestratorRetrySeconds}s; do not use --apply until resolved.");
                     if (WaitOrCancelled(cancellation.Token, settings.OrchestratorRetrySeconds)) break;
                 }
                 catch (Exception ex) when (ex is DirectoryNotFoundException or UnauthorizedAccessException or IOException)
                 {
                     WriteFailureState(settings, stateDirectory, cycle, "SOURCE_OR_STATE_IO_ERROR", ex.Message);
-                    Console.Error.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd'T'HH:mm:ss'Z'}] STEP14C I/O ERROR: {ex.Message}");
+                    Console.Error.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd'T'HH:mm:ss'Z'}] STEP14D I/O ERROR: {ex.Message}");
                     Console.Error.WriteLine($"An inaccessible candidate folder is never treated as empty. No Solr write was attempted; retrying in {settings.OrchestratorRetrySeconds}s.");
                     if (WaitOrCancelled(cancellation.Token, settings.OrchestratorRetrySeconds)) break;
                 }
             }
 
-            Console.WriteLine("Step 14C baseline-gated multi-candidate pipeline stopped cleanly. No Solr writes were performed by Step 14C.");
+            Console.WriteLine("Step 14D baseline-gated multi-candidate pipeline stopped cleanly. No Solr writes were performed by Step 14D.");
             return 0;
         }
         finally
@@ -141,31 +141,68 @@ public static class PipelineOrchestrator
         string? reportDirectory,
         long cycle)
     {
-        // Step 14C: capture baseline evidence before ingesting/processing any new event in this cycle.
+        // Step 14D: capture baseline evidence before ingesting/processing any new event in this cycle.
         // A newly allowlisted candidate remains review-gated until an operator explicitly approves
         // the captured starting state. Capture is one-time unless the operator refreshes it.
         var baselineStates = new Dictionary<string, BaselineEnrollmentSnapshot>(StringComparer.Ordinal);
+        var baselineErrors = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var candidateId in settings.CandidateIds)
-            baselineStates[candidateId] = BaselineEnrollmentService.EnsureCaptured(
-                settings, connection, workerRoot, reportDirectory, candidateId);
+        {
+            try
+            {
+                baselineStates[candidateId] = BaselineEnrollmentService.EnsureCaptured(
+                    settings, connection, workerRoot, reportDirectory, candidateId);
+            }
+            catch (Exception ex) when (ex is DirectoryNotFoundException or UnauthorizedAccessException or IOException or SolrReadOnlyException)
+            {
+                baselineErrors[candidateId] = ex.Message;
+                Console.Error.WriteLine($"STEP14D candidate={candidateId} baseline/source check isolated: {ex.Message}");
+            }
+        }
 
         var collector = IndexerCollector.CollectOnce(settings, connection, indexerUser, indexerPassword, printDuplicateEvents: false);
 
         var processed = 0;
-        while (processed < settings.OrchestratorMaxWorkerItemsPerCycle)
+        var failed = 0;
+        var workerFailures = new Dictionary<string, string>(StringComparer.Ordinal);
+        while (processed + failed < settings.OrchestratorMaxWorkerItemsPerCycle)
         {
-            var outcome = CandidateWorker.ProcessNext(settings, connection, workerRoot, stateDirectory, quietNoWork: true);
+            var outcome = CandidateWorker.ProcessNext(settings, connection, workerRoot, stateDirectory, quietNoWork: true, returnFailureOutcome: true);
             if (outcome.Kind == WorkerRunKind.NoWork) break;
+            if (outcome.Kind == WorkerRunKind.Failed)
+            {
+                failed++;
+                if (!string.IsNullOrWhiteSpace(outcome.CandidateId))
+                    workerFailures[outcome.CandidateId] = outcome.Error ?? "Candidate worker failed and was moved to retry.";
+                continue;
+            }
             processed++;
         }
-        if (processed == settings.OrchestratorMaxWorkerItemsPerCycle)
-            Console.WriteLine($"Step 14C worker drain reached configured per-cycle limit {settings.OrchestratorMaxWorkerItemsPerCycle}; remaining work will be handled next cycle.");
+        if (processed + failed == settings.OrchestratorMaxWorkerItemsPerCycle)
+            Console.WriteLine($"Step 14D worker drain reached configured per-cycle limit {settings.OrchestratorMaxWorkerItemsPerCycle}; remaining work will be handled next cycle.");
 
         var candidateSummaries = new List<PipelineCandidateCycleSummary>();
         foreach (var candidateId in settings.CandidateIds)
         {
             try
             {
+                if (workerFailures.TryGetValue(candidateId, out var workerFailure))
+                {
+                    var latest = PipelineRepository.ReadLatestSnapshot(connection, settings, candidateId);
+                    candidateSummaries.Add(new PipelineCandidateCycleSummary(
+                        candidateId, PipelineMutationDisposition.SourceUnavailable, latest?.MutationId, latest?.WorkerVersion,
+                        $"Candidate worker source/state failure was isolated and moved to retry; other candidates continued: {workerFailure}"));
+                    continue;
+                }
+                if (baselineErrors.TryGetValue(candidateId, out var baselineError))
+                {
+                    var latest = PipelineRepository.ReadLatestSnapshot(connection, settings, candidateId);
+                    candidateSummaries.Add(new PipelineCandidateCycleSummary(
+                        candidateId, PipelineMutationDisposition.SourceUnavailable, latest?.MutationId, latest?.WorkerVersion,
+                        $"Candidate baseline/source verification unavailable; other candidates continued: {baselineError}"));
+                    continue;
+                }
+
                 var enrollment = baselineStates[candidateId];
                 if (!BaselineEnrollmentPolicy.IsApproved(enrollment))
                 {
@@ -186,7 +223,7 @@ public static class PipelineOrchestrator
                         $"BASELINE_REVIEW_REQUIRED candidate={candidateId} status={enrollment.Status} sha256={enrollment.BaselineSha256} " +
                         $"disk={enrollment.DiskFileCount} eligible={enrollment.EligibleFileCount} solr={enrollment.SolrDocumentCount} " +
                         $"match={enrollment.MatchCount} missing={enrollment.MissingCount} stale={enrollment.StaleCount} other={enrollment.OtherConflictCount}. " +
-                        "Step 14C will not plan actions, build payloads, run Step 11 preflight, or write Solr until explicit baseline approval."));
+                        "Step 14D will not plan actions, build payloads, run Step 11 preflight, or write Solr until explicit baseline approval."));
                     continue;
                 }
 
@@ -213,8 +250,8 @@ public static class PipelineOrchestrator
             catch (Exception ex) when (ex is DirectoryNotFoundException or UnauthorizedAccessException or IOException)
             {
                 candidateSummaries.Add(new PipelineCandidateCycleSummary(
-                    candidateId, PipelineMutationDisposition.HaltedExecution, null, null,
-                    $"Candidate source/state I/O block; inaccessible folders are never treated as empty: {ex.Message}"));
+                    candidateId, PipelineMutationDisposition.SourceUnavailable, null, null,
+                    $"Candidate source/state I/O block; inaccessible folders are never treated as empty and will be retried: {ex.Message}"));
             }
         }
 
@@ -227,6 +264,7 @@ public static class PipelineOrchestrator
             collector.Duplicates,
             collector.Ignored,
             processed,
+            failed,
             aggregate.Disposition,
             aggregate.MutationId,
             aggregate.WorkerVersion,
@@ -252,7 +290,7 @@ public static class PipelineOrchestrator
             switch (decision.Disposition)
             {
                 case PipelineMutationDisposition.NeedsActions:
-                    Console.WriteLine($"STEP14C PREPARE candidate={candidateId} mutation_id={snapshot.MutationId}: running Step 10A idempotently.");
+                    Console.WriteLine($"STEP14D PREPARE candidate={candidateId} mutation_id={snapshot.MutationId}: running Step 10A idempotently.");
                     SolrConcreteActionPlanner.Run(settings, connection, workerRoot, reportDirectory, candidateId);
                     var afterActions = PipelineRepository.ReadLatestSnapshot(connection, settings, candidateId)
                         ?? throw new EventConflictException($"Candidate {candidateId} latest mutation disappeared after Step 10A.");
@@ -268,22 +306,22 @@ public static class PipelineOrchestrator
                     continue;
 
                 case PipelineMutationDisposition.NeedsPayloads:
-                    Console.WriteLine($"STEP14C PREPARE candidate={candidateId} mutation_id={snapshot.MutationId}: running Step 10B idempotently.");
+                    Console.WriteLine($"STEP14D PREPARE candidate={candidateId} mutation_id={snapshot.MutationId}: running Step 10B idempotently.");
                     _ = SolrPayloadPlanner.Run(settings, connection, workerRoot, reportDirectory, candidateId);
                     continue;
 
                 case PipelineMutationDisposition.ReadyForApproval:
-                    Console.WriteLine($"STEP14C PREFLIGHT candidate={candidateId} mutation_id={snapshot.MutationId}: invoking Step 11 in read-only preflight mode.");
+                    Console.WriteLine($"STEP14D PREFLIGHT candidate={candidateId} mutation_id={snapshot.MutationId}: invoking Step 11 in read-only preflight mode.");
                     _ = SolrExecutor.Run(settings, connection, workerRoot, snapshot.MutationId, apply: false);
                     return (snapshot, new PipelineDecisionResult(PipelineMutationDisposition.ReadyForApproval,
-                        $"READY_FOR_APPROVAL candidate={candidateId} mutation_id={snapshot.MutationId}. Step 14C will not apply it; use explicit 'solr-execute --mutation-id {snapshot.MutationId} --worker-root <root> --apply' after operator review."));
+                        $"READY_FOR_APPROVAL candidate={candidateId} mutation_id={snapshot.MutationId}. Step 14D will not apply it; use explicit 'solr-execute --mutation-id {snapshot.MutationId} --worker-root <root> --apply' after operator review."));
 
                 default:
                     return (snapshot, decision);
             }
         }
 
-        throw new InvalidOperationException($"Step 14C preparation for candidate {candidateId} exceeded its bounded stage-transition count.");
+        throw new InvalidOperationException($"Step 14D preparation for candidate {candidateId} exceeded its bounded stage-transition count.");
     }
 
     private static (PipelineMutationDisposition Disposition, ulong? MutationId, ulong? WorkerVersion, string Detail) Aggregate(
@@ -295,6 +333,7 @@ public static class PipelineOrchestrator
         static int Rank(PipelineMutationDisposition value) => value switch
         {
             PipelineMutationDisposition.HaltedExecution => 80,
+            PipelineMutationDisposition.SourceUnavailable => 75,
             PipelineMutationDisposition.BlockedPayload => 70,
             PipelineMutationDisposition.BaselineReviewRequired => 65,
             PipelineMutationDisposition.ReadyForApproval => 60,
@@ -325,9 +364,9 @@ public static class PipelineOrchestrator
     private static void PrintCycleSummary(PipelineCycleSummary summary)
     {
         Console.WriteLine(
-            $"[{summary.CompletedAtUtc:yyyy-MM-dd'T'HH:mm:ss'Z'}] step14c cycle={summary.Cycle} " +
+            $"[{summary.CompletedAtUtc:yyyy-MM-dd'T'HH:mm:ss'Z'}] step14d cycle={summary.Cycle} " +
             $"collector(seen={summary.CollectorSeen},accepted={summary.CollectorAccepted},inserted={summary.CollectorInserted},duplicates={summary.CollectorDuplicates},ignored={summary.CollectorIgnored}) " +
-            $"worker_processed={summary.WorkerItemsProcessed} aggregate_stage={summary.Disposition}");
+            $"worker_processed={summary.WorkerItemsProcessed} worker_failed={summary.WorkerItemsFailed} aggregate_stage={summary.Disposition}");
         foreach (var candidate in summary.Candidates)
         {
             Console.WriteLine($"  candidate={candidate.CandidateId} stage={candidate.Disposition} mutation={(candidate.MutationId?.ToString() ?? "n/a")} version={(candidate.WorkerVersion?.ToString() ?? "n/a")}");
@@ -344,7 +383,7 @@ public static class PipelineOrchestrator
             x.WorkerVersion,
             x.Detail)).ToList();
         _ = PipelineStateStore.Save(stateDirectory, new PipelineLocalState(
-            3,
+            4,
             settings.SourceInstance,
             settings.AgentId,
             string.Join(",", settings.CandidateIds),
@@ -363,7 +402,7 @@ public static class PipelineOrchestrator
         try
         {
             _ = PipelineStateStore.Save(stateDirectory, new PipelineLocalState(
-                3,
+                4,
                 settings.SourceInstance,
                 settings.AgentId,
                 string.Join(",", settings.CandidateIds),

@@ -1,0 +1,15 @@
+{
+  "step": "14D",
+  "scope": "failure/recovery hardening",
+  "dotnet_runtime_available_in_packaging_environment": false,
+  "expected_self_tests": 114,
+  "new_command": "recovery-inspect",
+  "solr_write_added": false,
+  "database_migration_required": false,
+  "safety_changes": [
+    "candidate-local source I/O failure can be returned as an isolated retry outcome under the orchestrator",
+    "processing/failed Solr mutation states are classified as uncertain",
+    "recovery inspection never authorizes blind retry",
+    "recovery inspection uses Solr GET and FLOSVR01 metadata only"
+  ]
+}

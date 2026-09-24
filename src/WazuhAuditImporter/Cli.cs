@@ -14,8 +14,8 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-collision-audit" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-status" or "baseline-capture" or "baseline-approve" or "pipeline-once" or "pipeline"))
-                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-collision-audit, solr-plan-actions, solr-build-payloads, solr-execute, baseline-status, baseline-capture, baseline-approve, pipeline-once, pipeline or help.");
+            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-collision-audit" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-status" or "baseline-capture" or "baseline-approve" or "recovery-inspect" or "pipeline-once" or "pipeline"))
+                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-collision-audit, solr-plan-actions, solr-build-payloads, solr-execute, baseline-status, baseline-capture, baseline-approve, recovery-inspect, pipeline-once, pipeline or help.");
             string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null, candidateIdsCsv = null, candidateId = null;
             string? baselineSha256 = null, reviewer = null, approvalNote = null;
             ulong? mutationId = null;
@@ -41,7 +41,7 @@ public static class Cli
                 }
                 else if (option == "--mutation-id")
                 {
-                    if (command != "solr-execute") throw new FormatException("--mutation-id is only valid with solr-execute.");
+                    if (command is not ("solr-execute" or "recovery-inspect")) throw new FormatException("--mutation-id is only valid with solr-execute or recovery-inspect.");
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal) ||
                         !ulong.TryParse(args[i++], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var parsedMutation) || parsedMutation == 0)
                         throw new FormatException("--mutation-id requires a positive integer value.");
@@ -65,8 +65,8 @@ public static class Cli
                 }
                 else if (option == "--candidate-id")
                 {
-                    if (command is not ("solr-plan-actions" or "solr-build-payloads" or "baseline-capture" or "baseline-approve"))
-                        throw new FormatException("--candidate-id is only valid with solr-plan-actions, solr-build-payloads, baseline-capture or baseline-approve.");
+                    if (command is not ("solr-plan-actions" or "solr-build-payloads" or "baseline-capture" or "baseline-approve" or "recovery-inspect"))
+                        throw new FormatException("--candidate-id is only valid with solr-plan-actions, solr-build-payloads, baseline-capture, baseline-approve or recovery-inspect.");
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
                         throw new FormatException("--candidate-id requires a candidate ID value.");
                     candidateId = args[i++];
@@ -122,8 +122,9 @@ public static class Cli
                 "baseline-approve" => apply
                     ? "Step 14C baseline approval. Revalidates the exact captured baseline, then records operator approval in MariaDB only. No Solr writes.\n"
                     : "Step 14C baseline approval preview. Revalidates the exact captured baseline; no status or Solr writes.\n",
+                "recovery-inspect" => "Step 14D read-only recovery inspection. Reads MariaDB state plus FLOSVR01 metadata/Solr GET. Never retries or writes Solr.\n",
                 "pipeline-once" or "pipeline" => settings.CandidateIds.Length > 1
-                    ? "Step 14C baseline-gated multi-candidate orchestration. Explicit allowlist only; NEVER writes to Solr.\n"
+                    ? "Step 14D failure-isolated baseline-gated multi-candidate orchestration. Explicit allowlist only; NEVER writes to Solr.\n"
                     : "Step 12 approval-gated orchestration. May collect events, reconcile metadata, read source content, store plans/payloads and run Step 11 preflight. NEVER writes to Solr.\n",
                 _ => "No Solr writes. No source-document access.\n"
             });
@@ -182,7 +183,7 @@ public static class Cli
                 return SolrCollisionAudit.Run(settings, workerRoot, reportDir, candidateLimit, maxIdLookups, explicitIds);
             }
 
-            if ((command is "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-capture" or "baseline-approve") && string.IsNullOrWhiteSpace(workerRoot))
+            if ((command is "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-capture" or "baseline-approve" or "recovery-inspect") && string.IsNullOrWhiteSpace(workerRoot))
                 throw new FormatException($"{command} requires --worker-root <accessible FLOSVR01 candidate root>.");
             if (command == "solr-execute" && mutationId is null)
                 throw new FormatException("solr-execute requires --mutation-id <positive integer>.");
@@ -274,6 +275,10 @@ public static class Cli
                 reviewer ??= Environment.UserDomainName + "\\" + Environment.UserName;
                 _ = BaselineEnrollmentService.Approve(settings, connection, workerRoot!, candidateId!, baselineSha256!, reviewer, approvalNote, apply);
                 return 0;
+            }
+            if (command == "recovery-inspect")
+            {
+                return RecoveryInspection.Run(settings, connection, workerRoot!, reportDir, candidateId, mutationId);
             }
 
             if (command == "solr-plan-actions")
@@ -476,11 +481,15 @@ public static class Cli
                            --baseline-sha256 <sha>
                            --worker-root <root>
                            [--reviewer <name>] [--approval-note <text>] [--apply]
-          pipeline-once --worker-root <root>         Step 14C: capture missing baselines first, collect/drain work, then
-                        --state-dir <dir>            only prepare candidates whose baseline is explicitly approved.
+          recovery-inspect --worker-root <root>      Step 14D: read-only recovery inspection of latest mutation state
+                           [--candidate-id <id>]      for one or every allowlisted candidate. Optionally select a specific
+                           [--mutation-id <id>]       mutation. processing/failed states are never authorized for blind retry.
+                           [--report-dir <dir>]
+          pipeline-once --worker-root <root>         Step 14D: baseline-gated multi-candidate cycle with per-candidate
+                        --state-dir <dir>            source failure isolation; no Solr update API calls.
                         [--report-dir <dir>]
-          pipeline --worker-root <root>              Step 14C continuous baseline-gated orchestration. Pending candidates
-                   --state-dir <dir>                 remain BaselineReviewRequired and cannot reach Step 10A/10B/11.
+          pipeline --worker-root <root>              Step 14D continuous orchestration. Candidate source failures are
+                   --state-dir <dir>                 moved to retry and do not block healthy candidates in the same cycle.
                    [--report-dir <dir>]              It NEVER calls the Solr update API; apply remains separate per mutation.
 
         Optional: --config <path.json>  --db-user <username>  --indexer-user <username>
@@ -499,7 +508,9 @@ public static class Cli
         command that can call the Solr update API, and only with an explicit mutation id plus --apply.
         Step 14C adds a candidate baseline-enrollment gate before Step 10A. Newly allowlisted candidates
         are captured as pending and remain BaselineReviewRequired until an operator approves the exact
-        baseline SHA-256. Manual Step 10A, Step 10B and Step 11 are also baseline-gated. Pipeline commands
-        never perform Solr update/delete/add/commit requests. Each allowlisted candidate remains independent.
+        baseline SHA-256. Manual Step 10A, Step 10B and Step 11 are also baseline-gated.
+        Step 14D adds recovery inspection plus per-candidate source-failure isolation. processing/failed
+        Solr mutations are treated as uncertain and are never blindly retried. Pipeline commands never
+        perform Solr update/delete/add/commit requests. Each allowlisted candidate remains independent.
         """);
 }

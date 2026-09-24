@@ -1,52 +1,65 @@
-# Step 14C — candidate baseline enrollment / review gate
+# Step 14D — multi-candidate failure/recovery hardening
 
-Step 14C keeps the Step 14B five-candidate allowlist but adds an explicit **baseline enrollment gate** before any newly allowlisted candidate can reach Step 10A concrete Solr action planning.
+Step 14D keeps the Step 14C five-candidate baseline enrollment gate and adds failure/recovery hardening before broader rollout.
 
-This addresses the rollout behavior proven in Step 14B: an innocuous Wazuh event can correctly trigger a full candidate reconciliation and expose older Solr drift that predates the event. That is desirable for synchronization, but a newly enrolled candidate must not immediately generate destructive delete/index work from historical drift without an operator first reviewing its starting state.
+It targets five failure classes:
 
-## Safety model
+1. one candidate source folder is temporarily inaccessible;
+2. WAZUH-LAB / Indexer tunnel is temporarily unavailable;
+3. Solr GET is temporarily unavailable;
+4. reviewed source/payload state changes before execution;
+5. a Step 11 mutation is left `processing` or `failed`, where blind retry would be unsafe.
 
-For every allowlisted candidate, Step 14C captures a metadata-only baseline:
+## What changes
+
+### Per-candidate source failure isolation
+
+The Step 14D orchestrator no longer lets a source-folder I/O failure for one claimed candidate abort the entire multi-candidate cycle.
+
+A failed candidate work item is moved to the existing retry schedule and reported as:
 
 ```text
-FLOSVR01 metadata
-      +
-Solr GET-only candidate state
-      ↓
-candidate_baseline_enrollment
-status = pending
-baseline_sha256 = reviewed-state fingerprint
-      ↓
-BASELINE_REVIEW_REQUIRED
+SourceUnavailable
 ```
 
-While a candidate baseline is `pending`:
+Other due candidates may still reconcile during the same cycle.
 
-- Wazuh collection continues.
-- candidate worker reconciliation and version tracking may continue.
-- no Step 10A concrete actions are planned.
-- no Step 10B payloads are built.
-- no Step 11 preflight or `--apply` is allowed.
-- direct/manual Step 10A, Step 10B and Step 11 calls are also blocked by the baseline gate.
+The rule remains strict: an inaccessible folder is **never** interpreted as an empty candidate inventory.
 
-Only explicit operator approval of the exact SHA-256 baseline changes the candidate to `approved`.
+Global failures such as MariaDB failure still stop/retry the whole cycle because their state cannot be safely isolated to one candidate.
 
-Approval itself changes **MariaDB review state only**. It does not write Solr.
+### Read-only recovery inspection
 
-## New MariaDB tables
+New command:
 
-Run `sql/015_create_candidate_baseline_enrollment.sql` before starting the Step 14C binary.
+```text
+recovery-inspect
+```
 
-The migration adds:
+It reads:
 
-- `candidate_baseline_enrollment` — current candidate enrollment/review state.
-- `candidate_baseline_enrollment_history` — append-only capture/approval audit trail.
+- current/latest MariaDB mutation and action status;
+- current FLOSVR01 metadata;
+- current Solr state using GET only.
 
-The migration does not touch application candidate tables and does not call Solr.
+It does **not** modify MariaDB and does **not** call the Solr update API.
+
+Recovery classifications include:
+
+```text
+NoMutation
+HealthyTerminal
+PlannedRequiresNormalPreflight
+UncertainProcessing
+UncertainFailed
+Inconsistent
+```
+
+`processing`, `failed`, and inconsistent execution states are never authorized for blind retry.
 
 ## Build gate
 
-Stop the Step 13 scheduled pipeline first so the running `dotnet.exe` does not lock the Debug DLL:
+Stop the running Step 13 scheduled pipeline before replacing/building the Debug DLL:
 
 ```powershell
 Stop-ScheduledTask -TaskName "WazuhAuditImporter-Step13" -ErrorAction SilentlyContinue
@@ -54,111 +67,83 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\ops\Stop-Step13.ps1"
 Start-Sleep -Seconds 3
 ```
 
-Merge Step 14C, run the SQL migration, then:
+Then merge Step 14D and run:
 
 ```powershell
 .\Restore-And-Preview.cmd
 ```
 
-Expected offline gate:
+Expected:
 
 ```text
 Build succeeded.
 0 Warning(s)
 0 Error(s)
-Self-tests: 108/108 passed; 0 failed.
+Self-tests: 114/114 passed; 0 failed.
 ```
 
-## Capture all five pilot baselines
+No new database migration is required for Step 14D.
 
-With the Step 14B pilot config still active:
+## Initial recovery inspection
+
+Run:
 
 ```powershell
-.\Step14C-Baseline-Capture.cmd
+.\Step14D-Recovery-Inspect.cmd
 ```
 
-This reads file metadata and Solr with GET only, then stores one `pending` review record for each candidate. It never reads document content and never writes Solr.
-
-Expected status can be inspected with:
+or one candidate only:
 
 ```powershell
-.\Step14C-Baseline-Status.cmd
+.\Step14D-Recovery-Inspect.cmd 1180001
 ```
 
-Based on the Step 14B acceptance evidence, candidates `1180001` and `1180097` should currently be clean/MATCH baselines, while `1180000`, `1180002` and `1180003` may show pre-existing MISSING/STALE drift. Do not approve the drifted candidates merely to clear the gate; review their baseline reports first.
+Expected for the current pilot after Steps 14B/14C:
 
-## Approve an exact baseline
+- `1180001` and `1180097` should normally be terminal/applied;
+- pending baseline candidates may have terminal/not-required worker mutations or no mutation;
+- there should be no unexpected `processing` or `failed` Solr mutation.
 
-First run an approval preview using the SHA shown by `Step14C-Baseline-Status.cmd`:
+A JSON report is written under `recovery-reports`.
+
+## Step 14D preflight
 
 ```powershell
-.\Step14C-Baseline-Approve.cmd 1180001 <baseline-sha256>
+.\Step14D-Preflight.cmd
 ```
 
-The command performs a fresh metadata/Solr GET recapture and refuses approval if the live fingerprint differs from the reviewed capture.
+This shows Step 14C enrollment status followed by Step 14D recovery inspection.
 
-If the preview passes, record approval:
+If an uncertain or inconsistent mutation is found, the command returns non-zero and the operator must inspect it before any `solr-execute --apply`.
 
-```powershell
-.\Step14C-Baseline-Approve.cmd 1180001 <baseline-sha256> --apply
-```
+## Failure/recovery acceptance sequence
 
-Approval stores the Windows reviewer identity in MariaDB and does not call Solr.
+See `docs/STEP14D_ACCEPTANCE.md` for the full sequence. The recommended order is:
 
-Repeat only for candidates whose starting baseline has actually been reviewed and accepted.
+1. build/self-test gate;
+2. recovery inspection with no uncertain mutation;
+3. WAZUH-LAB restart/IP-change recovery;
+4. source-folder-unavailable behavior (never infer empty; item moves to retry);
+5. source/payload drift rejection before Step 11 execution;
+6. Solr GET outage behavior (operator block / retry, no Solr update request);
+7. verify one candidate failure does not prevent healthy candidates from retaining independent state;
+8. inspect any real `processing`/`failed` mutation with `recovery-inspect` rather than blind retry.
 
-## Start the Step 13 supervisor again
+## Safety boundary
 
-```powershell
-Start-ScheduledTask -TaskName "WazuhAuditImporter-Step13"
-Start-Sleep -Seconds 8
-.\Step13-Status.cmd
-```
+Step 14D does not add automatic Solr execution.
 
-Pending candidates should show:
-
-```text
-BaselineReviewRequired
-```
-
-Approved candidates continue through the existing Step 14B per-candidate flow:
+The pipeline remains:
 
 ```text
 Wazuh event
-→ worker reconciliation
+→ candidate reconciliation
+→ baseline gate
 → Step 10A
 → Step 10B
 → Step 11 preflight
-→ ReadyForApproval
-→ separate explicit Step 11 --apply
+→ READY_FOR_APPROVAL
+→ separate explicit solr-execute --apply
 ```
 
-The supervisor never auto-applies Solr mutations.
-
-## Direct command hardening
-
-Step 14C also gates manual commands. For a baseline-pending candidate these commands must refuse to proceed:
-
-```text
-solr-plan-actions
-solr-build-payloads
-solr-execute (preflight or --apply)
-```
-
-This prevents bypassing the orchestration gate by running Step 10/11 manually.
-
-## Acceptance target
-
-Step 14C passes when:
-
-1. migration is present and schema guard passes;
-2. 108/108 offline tests pass;
-3. all five baseline captures are stored as `pending` initially;
-4. a pending candidate remains `BaselineReviewRequired` even when a Wazuh event creates/updates its worker mutation;
-5. direct Step 10A/10B/11 calls for that candidate are blocked;
-6. approval preview refuses a stale/wrong baseline SHA;
-7. exact live SHA approval changes only MariaDB enrollment state;
-8. an approved candidate can resume the normal approval-gated reconciliation flow;
-9. no automatic Solr apply is introduced.
-
-See `docs/STEP14C_ACCEPTANCE.md` for the detailed test sequence.
+The Step 13 supervisor and Step 14D pipeline never call `solr-execute --apply` automatically.
