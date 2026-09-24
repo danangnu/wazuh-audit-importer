@@ -1,3 +1,32 @@
+# Step 17 — controlled SmallDrift enrollment
+
+Step 17 keeps the existing 25-candidate Step 15 scope and introduces a deliberately narrow workflow for the first three `SmallDrift` baselines: `1180002`, `1180007`, and `1180009`.
+
+It does **not** widen FIM, does **not** add a database migration, and does **not** enable automatic Solr apply. The initial Step 17 approval path accepts only an unchanged pending baseline with exactly one current document missing from Solr, exactly one stale Solr document, and zero other conflicts.
+
+```powershell
+.\Step17-Preflight.cmd
+.\Step17-Review-SmallDrift.cmd
+.\Step17-Approve-SmallDrift.cmd <candidate-id> <baseline-sha256>
+.\Step17-Approve-SmallDrift.cmd <candidate-id> <baseline-sha256> --ack-small-drift --apply
+.\Step17-PostApproval-Check.cmd
+```
+
+Expected build gate:
+
+```text
+Build succeeded.
+0 Warning(s)
+0 Error(s)
+Self-tests: 136/136 passed; 0 failed.
+```
+
+Approval records enrollment in MariaDB only. **It does not repair historical Solr drift.** Any historical reconciliation still goes through Step 10A concrete actions, Step 10B payload review, Step 11 preflight, and a separate explicit `solr-execute --apply`.
+
+See `docs/STEP17_ACCEPTANCE.md`.
+
+---
+
 # Step 16 — baseline triage and controlled clean enrollment
 
 Step 16 keeps the Step 15 exact 25-candidate scope and adds a **read-only triage layer** plus a **clean-only baseline approval gate**. It does not widen FIM again, does not add a database migration, and does not enable automatic Solr apply.

@@ -1,0 +1,7 @@
+feat(step17): complete controlled SmallDrift reconciliation
+
+Add reviewed baseline approval for the three-candidate Step 17 pilot.
+Reconcile 1180002, 1180007, and 1180009 through explicit Step 11
+preflight and apply. Verify each candidate matches FLOSVR01 in Solr.
+
+Keep automatic Solr writes disabled and high-drift candidates gated.

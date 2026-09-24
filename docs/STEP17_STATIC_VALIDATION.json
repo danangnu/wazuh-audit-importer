@@ -1,0 +1,18 @@
+{
+  "step": "17",
+  "package": "controlled SmallDrift enrollment",
+  "database_migration_required": false,
+  "active_candidate_scope_changed": false,
+  "automatic_solr_apply_enabled": false,
+  "initial_batch": ["1180002", "1180007", "1180009"],
+  "policy": {
+    "enrollment_status": "pending",
+    "fingerprint_must_match": true,
+    "missing_count": 1,
+    "stale_count": 1,
+    "other_conflict_count": 0,
+    "explicit_ack_required_for_apply": true
+  },
+  "expected_self_tests": 136,
+  "runtime_validation_required_on_mgmtnb08": true
+}

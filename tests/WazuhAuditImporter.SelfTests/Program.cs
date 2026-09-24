@@ -1003,6 +1003,43 @@ cases.Add(("Step 16 clean-only policy rejects drifted pending baseline", () =>
     throw new Exception("Expected Step 16 clean-only drift rejection.");
 }));
 
+
+// Step 17 controlled initial SmallDrift enrollment policy
+cases.Add(("Step 17 initial pilot includes only the selected three SmallDrift candidates", () =>
+{
+    Assert(Step17SmallDriftPolicy.IsPilotCandidate("1180002"));
+    Assert(Step17SmallDriftPolicy.IsPilotCandidate("1180007"));
+    Assert(Step17SmallDriftPolicy.IsPilotCandidate("1180009"));
+    Assert(!Step17SmallDriftPolicy.IsPilotCandidate("1180011"));
+}));
+
+cases.Add(("Step 17 simple one-for-one SmallDrift is approval eligible", () =>
+{
+    Assert(Step17SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", true, 1, 1, 0, 1, 1, 0));
+}));
+
+cases.Add(("Step 17 blocks wider SmallDrift from the initial approval path", () =>
+{
+    Assert(!Step17SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", true, 1, 2, 0, 1, 2, 0));
+}));
+
+cases.Add(("Step 17 blocks clean pending baseline from drift approval", () =>
+{
+    Assert(!Step17SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", true, 1, 1, 1, 0, 0, 0));
+}));
+
+cases.Add(("Step 17 blocks stale fingerprint from drift approval", () =>
+{
+    Assert(!Step17SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", false, 1, 1, 0, 1, 1, 0));
+}));
+
+cases.Add(("Step 17 policy rejects candidate outside initial pilot batch", () =>
+{
+    try { Step17SmallDriftPolicy.RequirePilotCandidate("1180011"); }
+    catch (EventConflictException) { return; }
+    throw new Exception("Expected Step 17 controlled-batch rejection.");
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -1010,6 +1047,6 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E/Step16 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E/Step16/Step17 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;
 

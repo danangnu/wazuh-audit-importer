@@ -1,0 +1,53 @@
+{
+  "GeneratedAtUtc": "2026-09-24T05:58:35.4086269Z",
+  "Rows": [
+    {
+      "CandidateId": "1180002",
+      "BaselineSha256": "ef90d3070c7f9410920f753a957ed08d42ad7a6626b20d7dc0e29cc510346617",
+      "FingerprintMatch": false,
+      "DiskFileCount": 1,
+      "EligibleFileCount": 1,
+      "SolrDocumentCount": 1,
+      "MatchCount": 1,
+      "MissingCount": 0,
+      "StaleCount": 0,
+      "OtherConflictCount": 0,
+      "EligibleForStep17Approval": false,
+      "Missing": [],
+      "Stale": [],
+      "Detail": "Not eligible for the initial Step 17 approval; keep baseline gated."
+    },
+    {
+      "CandidateId": "1180007",
+      "BaselineSha256": "5ac50004d77efb37916938743a8313cdb0f995689c4142cd2e0b1fcc35abe3c3",
+      "FingerprintMatch": false,
+      "DiskFileCount": 3,
+      "EligibleFileCount": 1,
+      "SolrDocumentCount": 1,
+      "MatchCount": 1,
+      "MissingCount": 0,
+      "StaleCount": 0,
+      "OtherConflictCount": 0,
+      "EligibleForStep17Approval": false,
+      "Missing": [],
+      "Stale": [],
+      "Detail": "Not eligible for the initial Step 17 approval; keep baseline gated."
+    },
+    {
+      "CandidateId": "1180009",
+      "BaselineSha256": "fd598f1d8c90fb526f851b2f684287558ccb22d77a8cde312d0c6ffb4fb24a19",
+      "FingerprintMatch": false,
+      "DiskFileCount": 3,
+      "EligibleFileCount": 1,
+      "SolrDocumentCount": 1,
+      "MatchCount": 1,
+      "MissingCount": 0,
+      "StaleCount": 0,
+      "OtherConflictCount": 0,
+      "EligibleForStep17Approval": false,
+      "Missing": [],
+      "Stale": [],
+      "Detail": "Not eligible for the initial Step 17 approval; keep baseline gated."
+    }
+  ]
+}

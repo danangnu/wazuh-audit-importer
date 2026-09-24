@@ -1,0 +1,93 @@
+{
+  "GeneratedAtUtc": "2026-09-24T05:18:42.9654913Z",
+  "Rows": [
+    {
+      "CandidateId": "1180002",
+      "BaselineSha256": "ef90d3070c7f9410920f753a957ed08d42ad7a6626b20d7dc0e29cc510346617",
+      "FingerprintMatch": false,
+      "DiskFileCount": 1,
+      "EligibleFileCount": 1,
+      "SolrDocumentCount": 1,
+      "MatchCount": 1,
+      "MissingCount": 0,
+      "StaleCount": 0,
+      "OtherConflictCount": 0,
+      "EligibleForStep17Approval": false,
+      "Missing": [],
+      "Stale": [],
+      "Detail": "Not eligible for the initial Step 17 approval; keep baseline gated."
+    },
+    {
+      "CandidateId": "1180007",
+      "BaselineSha256": "5ac50004d77efb37916938743a8313cdb0f995689c4142cd2e0b1fcc35abe3c3",
+      "FingerprintMatch": false,
+      "DiskFileCount": 2,
+      "EligibleFileCount": 1,
+      "SolrDocumentCount": 1,
+      "MatchCount": 0,
+      "MissingCount": 1,
+      "StaleCount": 1,
+      "OtherConflictCount": 0,
+      "EligibleForStep17Approval": false,
+      "Missing": [
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180007\\1180007 2025 03 10 Spiteri, Jake Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180007 2025 03 10 Spiteri, Jake Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180007-2025-03-10-spiteri-jake-scraped-seek-ts-resume-profiletxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        }
+      ],
+      "Stale": [
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180007\\1180007 2025 03 10 Spiteri, Jake Scraped Seek TS Resume Profile 2025081911581405 TPEMAYU.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180007-2025-03-10-spiteri-jake-scraped-seek-ts-resume-profile-2025081911581405-tpemayutxt",
+          "SolrLastUpdate": "2026-02-23T02:56:13.367+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        }
+      ],
+      "Detail": "Not eligible for the initial Step 17 approval; keep baseline gated."
+    },
+    {
+      "CandidateId": "1180009",
+      "BaselineSha256": "fd598f1d8c90fb526f851b2f684287558ccb22d77a8cde312d0c6ffb4fb24a19",
+      "FingerprintMatch": true,
+      "DiskFileCount": 1,
+      "EligibleFileCount": 1,
+      "SolrDocumentCount": 1,
+      "MatchCount": 0,
+      "MissingCount": 1,
+      "StaleCount": 1,
+      "OtherConflictCount": 0,
+      "EligibleForStep17Approval": true,
+      "Missing": [
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180009\\1180009 2025 03 07 Cooper, Madison Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180009 2025 03 07 Cooper, Madison Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180009-2025-03-07-cooper-madison-scraped-seek-ts-resume-profiletxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        }
+      ],
+      "Stale": [
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180009\\1180009 2025 03 07 Cooper, Madison Scraped Seek TS Resume Profile 2025081912004702 NPUTRI.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180009-2025-03-07-cooper-madison-scraped-seek-ts-resume-profile-2025081912004702-nputritxt",
+          "SolrLastUpdate": "2026-02-23T02:56:41.701+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        }
+      ],
+      "Detail": "Eligible for the initial Step 17 one-for-one SmallDrift approval after exact operator review."
+    }
+  ]
+}
