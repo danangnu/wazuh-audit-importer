@@ -33,3 +33,6 @@ step13-health.json
 ops/step13.local.json
 
 solr-collision-audit-reports/
+baseline-reports/
+recovery-reports/
+pilot-reports/

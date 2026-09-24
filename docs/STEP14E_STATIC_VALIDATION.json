@@ -1,0 +1,20 @@
+{
+  "step": "14E",
+  "scope": "pilot metrics and delivery report",
+  "dotnet_runtime_available_in_packaging_environment": false,
+  "expected_self_tests": 122,
+  "new_command": "pilot-report",
+  "solr_write_added": false,
+  "database_migration_required": false,
+  "report_outputs": [
+    "JSON pilot metrics",
+    "CSV mutation timing rows",
+    "Markdown delivery report"
+  ],
+  "measurement_rules": [
+    "worker_version maps to the same candidate's Nth unique audit event",
+    "event-to-ready excludes later manual apply wait",
+    "ready-to-applied is labeled as including operator wait",
+    "no legacy speedup claim without an explicit measured legacy reference"
+  ]
+}

@@ -14,14 +14,15 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-collision-audit" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-status" or "baseline-capture" or "baseline-approve" or "recovery-inspect" or "pipeline-once" or "pipeline"))
-                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-collision-audit, solr-plan-actions, solr-build-payloads, solr-execute, baseline-status, baseline-capture, baseline-approve, recovery-inspect, pipeline-once, pipeline or help.");
+            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-collision-audit" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-status" or "baseline-capture" or "baseline-approve" or "recovery-inspect" or "pilot-report" or "pipeline-once" or "pipeline"))
+                throw new FormatException("Command must be import, check-db, collect-once, collect, worker-preflight, work-once, work, solr-readonly, solr-collision-audit, solr-plan-actions, solr-build-payloads, solr-execute, baseline-status, baseline-capture, baseline-approve, recovery-inspect, pilot-report, pipeline-once, pipeline or help.");
             string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null, candidateIdsCsv = null, candidateId = null;
             string? baselineSha256 = null, reviewer = null, approvalNote = null;
             ulong? mutationId = null;
             var candidateLimit = SolrCollisionAudit.DefaultCandidateLimit;
             var maxIdLookups = SolrCollisionAudit.DefaultMaxIdLookups;
             var apply = false;
+            double? legacyScanSeconds = null;
             var i = 1;
             if (command == "import")
             {
@@ -55,6 +56,15 @@ public static class Cli
                         throw new FormatException(option + " requires a positive integer value.");
                     if (option == "--candidate-limit") candidateLimit = parsed;
                     else maxIdLookups = parsed;
+                }
+                else if (option == "--legacy-scan-seconds")
+                {
+                    if (command != "pilot-report") throw new FormatException("--legacy-scan-seconds is only valid with pilot-report.");
+                    if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal) ||
+                        !double.TryParse(args[i++], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedLegacy) ||
+                        parsedLegacy <= 0 || !double.IsFinite(parsedLegacy))
+                        throw new FormatException("--legacy-scan-seconds requires a positive finite number.");
+                    legacyScanSeconds = parsedLegacy;
                 }
                 else if (option == "--candidate-ids")
                 {
@@ -123,6 +133,7 @@ public static class Cli
                     ? "Step 14C baseline approval. Revalidates the exact captured baseline, then records operator approval in MariaDB only. No Solr writes.\n"
                     : "Step 14C baseline approval preview. Revalidates the exact captured baseline; no status or Solr writes.\n",
                 "recovery-inspect" => "Step 14D read-only recovery inspection. Reads MariaDB state plus FLOSVR01 metadata/Solr GET. Never retries or writes Solr.\n",
+                "pilot-report" => "Step 14E pilot metrics/report. Reads MariaDB, FLOSVR01 metadata and Solr GET only; writes report files only. No Solr writes.\n",
                 "pipeline-once" or "pipeline" => settings.CandidateIds.Length > 1
                     ? "Step 14D failure-isolated baseline-gated multi-candidate orchestration. Explicit allowlist only; NEVER writes to Solr.\n"
                     : "Step 12 approval-gated orchestration. May collect events, reconcile metadata, read source content, store plans/payloads and run Step 11 preflight. NEVER writes to Solr.\n",
@@ -183,7 +194,7 @@ public static class Cli
                 return SolrCollisionAudit.Run(settings, workerRoot, reportDir, candidateLimit, maxIdLookups, explicitIds);
             }
 
-            if ((command is "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-capture" or "baseline-approve" or "recovery-inspect") && string.IsNullOrWhiteSpace(workerRoot))
+            if ((command is "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-capture" or "baseline-approve" or "recovery-inspect" or "pilot-report") && string.IsNullOrWhiteSpace(workerRoot))
                 throw new FormatException($"{command} requires --worker-root <accessible FLOSVR01 candidate root>.");
             if (command == "solr-execute" && mutationId is null)
                 throw new FormatException("solr-execute requires --mutation-id <positive integer>.");
@@ -279,6 +290,10 @@ public static class Cli
             if (command == "recovery-inspect")
             {
                 return RecoveryInspection.Run(settings, connection, workerRoot!, reportDir, candidateId, mutationId);
+            }
+            if (command == "pilot-report")
+            {
+                return PilotMetricsService.Run(settings, connection, workerRoot!, reportDir, legacyScanSeconds);
             }
 
             if (command == "solr-plan-actions")
@@ -485,6 +500,9 @@ public static class Cli
                            [--candidate-id <id>]      for one or every allowlisted candidate. Optionally select a specific
                            [--mutation-id <id>]       mutation. processing/failed states are never authorized for blind retry.
                            [--report-dir <dir>]
+          pilot-report --worker-root <root>          Step 14E: generate JSON/CSV metrics plus a Markdown pilot delivery report.
+                       [--report-dir <dir>]           Reads MariaDB, FLOSVR01 metadata and Solr GET only.
+                       [--legacy-scan-seconds <n>]   Optional operator-supplied legacy scan timing for a labeled reference-only comparison.
           pipeline-once --worker-root <root>         Step 14D: baseline-gated multi-candidate cycle with per-candidate
                         --state-dir <dir>            source failure isolation; no Solr update API calls.
                         [--report-dir <dir>]
@@ -512,5 +530,8 @@ public static class Cli
         Step 14D adds recovery inspection plus per-candidate source-failure isolation. processing/failed
         Solr mutations are treated as uncertain and are never blindly retried. Pipeline commands never
         perform Solr update/delete/add/commit requests. Each allowlisted candidate remains independent.
+        Step 14E adds read-only pilot metrics and a delivery report. It derives observed event/ingest/worker/
+        payload/apply timings from persisted UTC timestamps and does not claim a legacy-scan speedup unless
+        an operator supplies a measured --legacy-scan-seconds reference.
         """);
 }

@@ -853,6 +853,90 @@ cases.Add(("Step 14D recovery inspection never authorizes blind retry", () =>
         Assert(!RecoveryPolicy.BlindRetryAllowed(value));
 }));
 
+
+// Step 14E pilot metrics/report policy
+cases.Add(("Step 14E percentile interpolation is deterministic", () =>
+{
+    var values = new[] { 1d, 2d, 3d, 4d };
+    Assert(Math.Abs(PilotMetricsMath.Percentile(values, 0.50) - 2.5) < 0.000001);
+    Assert(Math.Abs(PilotMetricsMath.Percentile(values, 0.95) - 3.85) < 0.000001);
+}));
+
+cases.Add(("Step 14E latency summary excludes missing values", () =>
+{
+    var stats = PilotMetricsMath.Summarize(new double?[] { 1, null, 3, 2 });
+    Assert(stats.Count == 3 && stats.MinSeconds == 1 && stats.MaxSeconds == 3 && stats.P50Seconds == 2);
+}));
+
+cases.Add(("Step 14E negative latency is not reported", () =>
+{
+    var t = new DateTime(2026, 9, 24, 1, 0, 0, DateTimeKind.Utc);
+    Assert(PilotMetricsMath.SecondsBetween(t, t.AddSeconds(-1)) is null);
+}));
+
+cases.Add(("Step 14E maps worker version to candidate audit version", () =>
+{
+    var t = new DateTime(2026, 9, 24, 1, 0, 0, DateTimeKind.Utc);
+    var events = new[]
+    {
+        new PilotEventVersion("1180097", 1, 101, t, t.AddSeconds(2)),
+        new PilotEventVersion("1180097", 2, 102, t.AddSeconds(10), t.AddSeconds(12))
+    };
+    var mutations = new[]
+    {
+        new PilotMutationRow(5, "1180097", 2, "reindex_candidate", "applied", 1,
+            t.AddSeconds(15), t.AddSeconds(30), t.AddSeconds(30))
+    };
+    var actions = new Dictionary<ulong, PilotActionAggregate>
+    {
+        [5] = new(5, 1, 0, 0, 1, 0, 0, t.AddSeconds(16), t.AddSeconds(30))
+    };
+    var payloads = new Dictionary<ulong, PilotPayloadAggregate>
+    {
+        [5] = new(5, 1, 1, 0, t.AddSeconds(20))
+    };
+    var timing = PilotMetricsService.BuildTimings(events, mutations, actions, payloads).Single();
+    Assert(timing.AuditEventId == 102);
+    Assert(Math.Abs(timing.EventToReadySeconds!.Value - 10) < 0.000001);
+    Assert(Math.Abs(timing.ReadyToAppliedSeconds!.Value - 10) < 0.000001);
+}));
+
+cases.Add(("Step 14E blocked payload is not counted as ready-for-approval timing", () =>
+{
+    var t = new DateTime(2026, 9, 24, 1, 0, 0, DateTimeKind.Utc);
+    var events = new[] { new PilotEventVersion("1180097", 1, 101, t, t.AddSeconds(1)) };
+    var mutations = new[] { new PilotMutationRow(5, "1180097", 1, "reindex_candidate", "planned", 0, t.AddSeconds(2), t.AddSeconds(3), null) };
+    var payloads = new Dictionary<ulong, PilotPayloadAggregate> { [5] = new(5, 1, 0, 1, t.AddSeconds(3)) };
+    var timing = PilotMetricsService.BuildTimings(events, mutations, new Dictionary<ulong, PilotActionAggregate>(), payloads).Single();
+    Assert(timing.PayloadReadyAtUtc is null && timing.EventToReadySeconds is null);
+}));
+
+cases.Add(("Step 14E not-required mutation still reports event-to-worker timing", () =>
+{
+    var t = new DateTime(2026, 9, 24, 1, 0, 0, DateTimeKind.Utc);
+    var events = new[] { new PilotEventVersion("1180001", 1, 201, t, t.AddSeconds(1)) };
+    var mutations = new[] { new PilotMutationRow(7, "1180001", 1, "none", "not_required", 0, t.AddSeconds(4), t.AddSeconds(4), null) };
+    var timing = PilotMetricsService.BuildTimings(events, mutations,
+        new Dictionary<ulong, PilotActionAggregate>(), new Dictionary<ulong, PilotPayloadAggregate>()).Single();
+    Assert(Math.Abs(timing.EventToMutationSeconds!.Value - 4) < 0.000001);
+    Assert(timing.EventToReadySeconds is null);
+}));
+
+cases.Add(("Step 14E omits legacy speedup without measured reference", () =>
+{
+    var stats = new PilotLatencyStats(2, 1, 2, 3, 2, 3);
+    Assert(PilotMetricsMath.BuildLegacyComparison(null, stats) is null);
+}));
+
+cases.Add(("Step 14E legacy reference comparison is explicitly approximate", () =>
+{
+    var stats = new PilotLatencyStats(2, 1, 5, 8, 5, 8);
+    var result = PilotMetricsMath.BuildLegacyComparison(20, stats)!;
+    Assert(Math.Abs(result.ApproximateP50SpeedupFactor!.Value - 4) < 0.000001);
+    Assert(result.ReferenceSource.Contains("operator-supplied", StringComparison.Ordinal));
+    Assert(result.Caveat.Contains("not a controlled benchmark", StringComparison.Ordinal));
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -860,6 +944,6 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;
 
