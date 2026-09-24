@@ -1040,6 +1040,30 @@ cases.Add(("Step 17 policy rejects candidate outside initial pilot batch", () =>
     throw new Exception("Expected Step 17 controlled-batch rejection.");
 }));
 
+// Step 18 expansion must not change Step 17's closed batch or approve unrelated/high-drift candidates.
+cases.Add(("Step 18 expansion scope is disjoint from the closed Step 17 batch", () =>
+{
+    Assert(Step18SmallDriftPolicy.ExpansionBatch.OrderBy(x => x, StringComparer.Ordinal)
+        .SequenceEqual(new[] { "1180011", "1180012", "1180014" }));
+    Assert(Step18SmallDriftPolicy.ExpansionBatch.All(x => !Step17SmallDriftPolicy.IsPilotCandidate(x)));
+    Assert(!Step18SmallDriftPolicy.IsExpansionCandidate("1180008"));
+}));
+
+cases.Add(("Step 18 rejects changed evidence, wider drift and already approved baselines", () =>
+{
+    Assert(Step18SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", true, 1, 1, 0, 1, 1, 0));
+    Assert(!Step18SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", false, 1, 1, 0, 1, 1, 0));
+    Assert(!Step18SmallDriftPolicy.IsSimpleOneForOneSmallDrift("pending", true, 1, 2, 0, 1, 2, 0));
+    Assert(!Step18SmallDriftPolicy.IsSimpleOneForOneSmallDrift("approved", true, 1, 1, 0, 1, 1, 0));
+}));
+
+cases.Add(("Step 18 rejects out-of-batch approval even with one-for-one drift", () =>
+{
+    try { Step18SmallDriftPolicy.RequireExpansionCandidate("1180008"); }
+    catch (EventConflictException) { return; }
+    throw new Exception("Expected Step 18 expansion-batch rejection.");
+}));
+
 var failed = 0;
 foreach (var (name, run) in cases)
 {
@@ -1047,6 +1071,5 @@ foreach (var (name, run) in cases)
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E/Step16/Step17 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E/Step16/Step17/Step18 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;
-

@@ -1,0 +1,41 @@
+{
+  "GeneratedAtUtc": "2026-09-24T07:45:04.6645479Z",
+  "Rows": [
+    {
+      "CandidateId": "1180014",
+      "BaselineSha256": "357aeff150c6821a09f8155a640875b2b8374eda0dcda44c48f2330c50043fc2",
+      "FingerprintMatch": true,
+      "DiskFileCount": 1,
+      "EligibleFileCount": 1,
+      "SolrDocumentCount": 1,
+      "MatchCount": 0,
+      "MissingCount": 1,
+      "StaleCount": 1,
+      "OtherConflictCount": 0,
+      "EligibleForStep18Approval": true,
+      "Missing": [
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180014\\1180014 2025 03 18 Rodden, Leearna Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180014 2025 03 18 Rodden, Leearna Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180014-2025-03-18-rodden-leearna-scraped-seek-ts-resume-profiletxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        }
+      ],
+      "Stale": [
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180014\\1180014 2025 03 18 Rodden, Leearna Scraped Seek TS Resume Profile 2025081912080410 NPUTRI.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180014-2025-03-18-rodden-leearna-scraped-seek-ts-resume-profile-2025081912080410-nputritxt",
+          "SolrLastUpdate": "2026-02-23T02:55:09.879+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        }
+      ],
+      "Detail": "Eligible for the controlled Step 18 one-for-one SmallDrift approval after exact operator review."
+    }
+  ]
+}

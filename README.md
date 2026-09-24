@@ -1,4 +1,8 @@
-# Step 17 — controlled SmallDrift enrollment
+# Step 18 — controlled SmallDrift expansion
+
+Step 18 adds a separate three-candidate review and individual baseline approval path for 1180011, 1180012 and 1180014. Start with `Step18-Review-SmallDrift.cmd`; approval previews are read-only, and approval `--apply` records only MariaDB enrollment. Every later Solr mutation still requires a reviewed Step 11 preflight and an explicit, separate `--apply`. See `docs/STEP18_ACCEPTANCE.md` for the rollout gates. The Step 17 batch and FIM allowlist remain unchanged.
+
+## Step 17 reference
 
 Step 17 keeps the existing 25-candidate Step 15 scope and introduces a deliberately narrow workflow for the first three `SmallDrift` baselines: `1180002`, `1180007`, and `1180009`.
 

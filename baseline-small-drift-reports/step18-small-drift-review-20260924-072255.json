@@ -1,0 +1,41 @@
+{
+  "GeneratedAtUtc": "2026-09-24T07:22:55.6415025Z",
+  "Rows": [
+    {
+      "CandidateId": "1180011",
+      "BaselineSha256": "fa220a3e3d5e4aeab5f9d5e942f90009e0fc8924458f087f18793a860d716cb5",
+      "FingerprintMatch": true,
+      "DiskFileCount": 1,
+      "EligibleFileCount": 1,
+      "SolrDocumentCount": 1,
+      "MatchCount": 0,
+      "MissingCount": 1,
+      "StaleCount": 1,
+      "OtherConflictCount": 0,
+      "EligibleForStep18Approval": true,
+      "Missing": [
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180011\\1180011 2025 03 17 Noel, Fabien Scraped Seek TS Resume Profile.txt",
+          "RelativePath": "1180011 2025 03 17 Noel, Fabien Scraped Seek TS Resume Profile.txt",
+          "ExpectedLegacyId": "1180011-2025-03-17-noel-fabien-scraped-seek-ts-resume-profiletxt",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        }
+      ],
+      "Stale": [
+        {
+          "Status": "STALE_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180011\\1180011 2025 03 17 Noel, Fabien Scraped Seek TS Resume Profile 2025081912034448 KARING.txt",
+          "RelativePath": null,
+          "ExpectedLegacyId": null,
+          "SolrId": "1180011-2025-03-17-noel-fabien-scraped-seek-ts-resume-profile-2025081912034448-karingtxt",
+          "SolrLastUpdate": "2026-02-23T02:55:26.287+00:00",
+          "Detail": "Solr document path has no eligible file in the current FLOSVR01 candidate inventory."
+        }
+      ],
+      "Detail": "Eligible for the controlled Step 18 one-for-one SmallDrift approval after exact operator review."
+    }
+  ]
+}

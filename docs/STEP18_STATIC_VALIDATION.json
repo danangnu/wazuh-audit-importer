@@ -1,0 +1,15 @@
+{
+  "step": 18,
+  "scope": ["1180011", "1180012", "1180014"],
+  "step17_policy_unchanged": true,
+  "fim_importer_allowlist_unchanged": true,
+  "database_migration_required": false,
+  "automatic_solr_apply": false,
+  "approval_requires_pending_baseline": true,
+  "approval_requires_fresh_matching_fingerprint": true,
+  "approval_requires_missing_stale_other": [1, 1, 0],
+  "approval_apply_requires_ack_small_drift": true,
+  "authoring_workspace_static_guard": "PASS",
+  "authoring_workspace_dotnet_build_and_self_tests": "NOT_RUN_DOTNET_SDK_UNAVAILABLE",
+  "deployment_gate": "Run Restore-And-Preview.cmd on MGMTNB08; require .NET 9 build and all self-tests passing before resuming Step 13."
+}
