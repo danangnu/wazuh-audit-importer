@@ -1,0 +1,12 @@
+{
+  "step": "15",
+  "title": "controlled 25-candidate rollout",
+  "active_candidate_limit": 25,
+  "root_wide_processing": false,
+  "automatic_solr_apply": false,
+  "baseline_gate_required": true,
+  "collision_audit_required": true,
+  "existing_approvals_preserved_on_capture": true,
+  "fim_manager_hostname_required": "MGMTNB08",
+  "database_migration_required": false
+}

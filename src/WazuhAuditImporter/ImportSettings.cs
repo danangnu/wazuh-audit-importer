@@ -6,7 +6,7 @@ namespace WazuhAuditImporter;
 
 public sealed class ImportSettings
 {
-    public const int MaximumActiveCandidateIds = 5;
+    public const int MaximumActiveCandidateIds = 25;
     public string DatabaseHost { get; set; } = "127.0.0.1";
     public uint DatabasePort { get; set; } = 3306;
     public string DatabaseName { get; set; } = "wazuh_audit_poc";
@@ -91,7 +91,7 @@ public sealed class ImportSettings
             CandidateIds.Any(id => id is null || !Regex.IsMatch(id, @"\A[0-9]{1,32}\z")))
             throw new FormatException("Set an explicit nonempty list of allowed CandidateIds.");
         if (CandidateIds.Length > MaximumActiveCandidateIds)
-            throw new FormatException($"Step 14C active processing is limited to {MaximumActiveCandidateIds} explicitly allowed candidates.");
+            throw new FormatException($"Step 15 controlled processing is limited to {MaximumActiveCandidateIds} explicitly allowed candidates.");
         if (CandidateIds.Distinct(StringComparer.Ordinal).Count() != CandidateIds.Length)
             throw new FormatException("CandidateIds must not contain duplicates.");
         ValidateCollector();
@@ -116,16 +116,16 @@ public sealed class ImportSettings
         var fullState = Path.GetFullPath(stateDirectory);
         if (!Path.IsPathFullyQualified(fullState))
             throw new FormatException("Worker state directory must resolve to a fully-qualified path.");
-        // Step 14C retains the Step 14B small explicit allowlist. Every worker/collector/planner
-        // operation still checks CandidateIds; broad root-wide processing is forbidden.
+        // Step 15 expands the explicit allowlist in a controlled 25-candidate cohort. Every worker/collector/planner
+        // operation still checks CandidateIds; broad root-wide processing remains forbidden.
         if (CandidateIds.Length > MaximumActiveCandidateIds)
-            throw new FormatException($"Step 14C worker scope is limited to {MaximumActiveCandidateIds} candidates.");
+            throw new FormatException($"Step 15 worker scope is limited to {MaximumActiveCandidateIds} candidates.");
     }
 
     public void ValidateAllowedCandidate(string candidateId)
     {
         if (string.IsNullOrWhiteSpace(candidateId) || !CandidateIds.Contains(candidateId, StringComparer.Ordinal))
-            throw new FormatException($"Candidate '{candidateId}' is outside the explicit Step 14C allowlist.");
+            throw new FormatException($"Candidate '{candidateId}' is outside the explicit controlled allowlist.");
     }
 
     public void ValidateCollector()

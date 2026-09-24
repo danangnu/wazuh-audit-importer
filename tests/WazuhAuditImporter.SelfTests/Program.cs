@@ -664,8 +664,17 @@ cases.Add(("Step 14B explicit five-candidate active allowlist accepted", () =>
     var multi = new ImportSettings { CandidateIds = ["1180000", "1180001", "1180002", "1180003", "1180097"] };
     multi.Validate();
 }));
-cases.Add(("Step 14B active allowlist rejects more than five candidates", () => Reject(() =>
-    new ImportSettings { CandidateIds = ["1180000", "1180001", "1180002", "1180003", "1180004", "1180097"] }.Validate())));
+cases.Add(("Step 15 explicit twenty-five-candidate rollout allowlist accepted", () =>
+{
+    var ids = Enumerable.Range(1180000, 24).Select(x => x.ToString()).Concat(["1180097"]).ToArray();
+    Assert(ids.Length == 25);
+    new ImportSettings { CandidateIds = ids }.Validate();
+}));
+cases.Add(("Step 15 active allowlist rejects more than twenty-five candidates", () => Reject(() =>
+{
+    var ids = Enumerable.Range(1180000, 26).Select(x => x.ToString()).ToArray();
+    new ImportSettings { CandidateIds = ids }.Validate();
+})));
 cases.Add(("Step 14B active allowlist rejects duplicate candidate", () => Reject(() =>
     new ImportSettings { CandidateIds = ["1180000", "1180000"] }.Validate())));
 cases.Add(("Step 14B parser accepts an explicitly allowlisted second candidate", () =>
@@ -678,6 +687,20 @@ cases.Add(("Step 14B parser accepts an explicitly allowlisted second candidate",
 }));
 cases.Add(("Step 14B candidate guard rejects IDs outside active allowlist", () => Reject(() =>
     new ImportSettings { CandidateIds = ["1180000", "1180097"] }.ValidateAllowedCandidate("1180002"))));
+
+cases.Add(("Step 15 candidate guard accepts the last controlled cohort member", () =>
+{
+    var ids = Enumerable.Range(1180000, 24).Select(x => x.ToString()).Concat(["1180097"]).ToArray();
+    var settings = new ImportSettings { CandidateIds = ids };
+    settings.Validate();
+    settings.ValidateAllowedCandidate("1180023");
+}));
+cases.Add(("Step 15 candidate guard still rejects IDs outside the 25-candidate cohort", () => Reject(() =>
+{
+    var ids = Enumerable.Range(1180000, 24).Select(x => x.ToString()).Concat(["1180097"]).ToArray();
+    var settings = new ImportSettings { CandidateIds = ids };
+    settings.ValidateAllowedCandidate("1180024");
+})));
 
 
 cases.Add(("Step 14C pending baseline is not approved", () =>

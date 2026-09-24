@@ -1,76 +1,48 @@
-# Step 14E — pilot metrics and delivery report
+# Step 15 — controlled 25-candidate rollout
 
-Step 14E keeps the Step 14D failure/recovery safeguards and adds a **read-only pilot measurement/reporting layer** for the current five-candidate rollout.
+Step 15 expands the validated five-candidate Step 14 pilot to an **explicit 25-candidate cohort** while retaining the Step 14C baseline enrollment gate, Step 14D failure/recovery safeguards, Step 13 supervisor recovery, and manual Step 11 Solr approval.
 
-The goal is to give Campbell a concrete answer to the original problem: what the event-driven Wazuh → MariaDB → reconciliation → approval-gated Solr pipeline is doing, how quickly the observed pilot stages complete, what is currently synchronized, and which safety controls remain in force.
+It does **not** enable root-wide processing and does **not** enable automatic Solr apply.
 
-## What Step 14E adds
-
-New command:
+## Exact Step 15 cohort
 
 ```text
-pilot-report
+1180000-1180023
+1180097
 ```
 
-It reads only:
+That is 25 explicit candidate folders. The cohort matches the earlier controlled Step 14A collision audit range.
 
-- existing `wazuh_audit_poc` audit/mutation/action/payload/baseline rows;
-- FLOSVR01 candidate **file metadata only**;
-- Solr using HTTP GET only.
-
-It writes local report files only. It never changes source documents, MariaDB application rows, or Solr.
-
-Output under `pilot-reports`:
+## Safety boundary retained
 
 ```text
-step14e-pilot-metrics-YYYYMMDD-HHMMSS.json
-step14e-mutation-timings-YYYYMMDD-HHMMSS.csv
-step14e-pilot-delivery-report-YYYYMMDD-HHMMSS.md
+Wazuh event
+  → explicit candidate allowlist
+  → candidate worker reconciliation
+  → baseline enrollment gate
+  → Step 10A concrete action plan
+  → Step 10B reviewed payload
+  → Step 11 read-only preflight
+  → READY_FOR_APPROVAL
+  → separate explicit solr-execute --apply
 ```
 
-## Observed latency stages
+Newly added candidates are captured as `PENDING` baselines and cannot progress to Step 10A until explicitly reviewed and approved. Existing `APPROVED` baseline rows are preserved by baseline capture.
 
-For each mutation, Step 14E maps `worker_version` back to the corresponding unique candidate audit-event version and reports available UTC timing stages:
+## What Step 15 changes
 
-```text
-Wazuh event time
-  → MariaDB ingest
-  → worker/mutation plan
-  → reviewed payload ready
-  → explicit operator-approved / verified apply
-```
-
-The report deliberately separates:
-
-```text
-event → ready for approval
-```
-
-from:
-
-```text
-ready for approval → verified apply
-```
-
-because the second interval includes deliberate human/operator review and should not be presented as machine latency.
-
-## Legacy scanner comparison
-
-By default Step 14E does **not** claim an X-times speedup. The pilot database does not contain a measured timing for the old continuous full-folder scanner.
-
-If Campbell or an old application log provides a measured legacy reference, add it explicitly:
-
-```powershell
-.\Step14E-Report.cmd 600
-```
-
-where `600` is the measured legacy scan interval/latency in seconds.
-
-The resulting comparison is clearly labeled as an **operator-supplied reference**, not a controlled benchmark.
+- raises the hard active-candidate ceiling from 5 to **25**;
+- adds `importer.step15.pilot.json` with the exact 25-candidate cohort;
+- increases the bounded worker drain to 25 items/cycle for this cohort;
+- adds a 25-candidate Wazuh FIM allowlist script for FLOSVR01;
+- adds exact 25-candidate metadata + collision/ownership preflight;
+- adds Step 15 baseline capture/status helpers;
+- adds Step 15 activation and post-activation reporting helpers;
+- keeps the baseline gate and manual Solr approval unchanged.
 
 ## Build gate
 
-Stop the running Step 13 scheduled pipeline before replacing/building the Debug DLL:
+Stop the scheduled pipeline before replacing/building the Debug DLL:
 
 ```powershell
 Stop-ScheduledTask -TaskName "WazuhAuditImporter-Step13" -ErrorAction SilentlyContinue
@@ -78,7 +50,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\ops\Stop-Step13.ps1"
 Start-Sleep -Seconds 3
 ```
 
-Then merge Step 14E and run:
+Then merge Step 15 and run:
 
 ```powershell
 .\Restore-And-Preview.cmd
@@ -90,79 +62,153 @@ Expected:
 Build succeeded.
 0 Warning(s)
 0 Error(s)
-Self-tests: 122/122 passed; 0 failed.
+Self-tests: 125/125 passed; 0 failed.
 ```
 
-No database migration is required for Step 14E.
+No MariaDB migration is required for Step 15.
 
-## Generate the pilot report
+## 1. Exact 25-candidate preflight
 
 ```powershell
-.\Step14E-Report.cmd
+.\Step15-Preflight.cmd
 ```
 
-Expected summary includes:
+This performs:
+
+- metadata-only access check for all 25 candidate folders;
+- exact 25-candidate Step 14A legacy-ID collision/ownership audit;
+- Solr GET only;
+- no MariaDB writes;
+- no source-content reads;
+- no Solr writes.
+
+Pass criteria include:
 
 ```text
-Candidates in active allowlist
-Unique audit events
-Mutation/action/payload counts
-Baseline approved/pending counts
-Current live candidate reconciliation
-Observed event → ingest latency
-Observed event → ready-for-approval latency
-Observed ready → verified-apply interval
-Observed event → verified-apply latency
+Candidates audited : 25
+Cross-candidate disk collision groups : 0
+Within-candidate disk collision groups: 0
+Solr owner-different-candidate conflicts: 0
+Solr same-candidate/path conflicts     : 0
+SafeToExpandScope                     : True
 ```
 
-and a per-candidate live state table.
-
-## Full Step 14E preflight
+## 2. Capture enrollment baselines before activating the larger event scope
 
 ```powershell
-.\Step14E-Preflight.cmd
+.\Step15-Baseline-Capture.cmd
+.\Step15-Baseline-Status.cmd
 ```
 
-This runs the Step 14D recovery/baseline preflight first and then creates the Step 14E report.
+Existing approved baselines such as `1180001` and `1180097` are not replaced. Newly added candidates are captured as `PENDING` and remain review-gated.
 
-Pass criteria:
-
-- no unexplained uncertain/failed processing state;
-- report files are generated successfully;
-- no Solr writes occur;
-- the report does not claim a legacy speedup unless a measured legacy reference was explicitly supplied.
-
-## Current pilot interpretation
-
-The active five-candidate configuration remains intentionally small:
+For the current pilot evidence, the expected high-level state is:
 
 ```text
-1180000
-1180001
-1180002
-1180003
-1180097
+APPROVED: 1180001, 1180097
+PENDING : all other Step 15 cohort candidates unless separately reviewed
 ```
 
-`1180001` and `1180097` have been reconciled and approved in the pilot. Candidates with historical drift remain baseline-gated until separately reviewed.
+Do not bulk-approve the new cohort merely because it passed collision audit. Collision safety and baseline reconciliation review are separate gates.
 
-Step 14E is reporting only. It does not broaden candidate scope and does not enable automatic Solr apply.
+## 3. Expand FLOSVR01 Wazuh FIM to the exact 25 folders
 
-## Safety boundary
+Copy `ops\FLOSVR01-Step15-Allowlist.ps1` to FLOSVR01 and run from elevated PowerShell:
 
-The operational pipeline remains:
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File ".\FLOSVR01-Step15-Allowlist.ps1"
+```
+
+The script:
+
+- requires exactly 25 explicit candidate IDs;
+- verifies every folder exists;
+- refuses a root-wide `To 1189999` monitor;
+- refuses to proceed if the manager address has regressed from stable hostname `MGMTNB08` to a DHCP IPv4 address;
+- backs up `ossec.conf`;
+- writes exactly 25 managed realtime FIM entries;
+- restarts `WazuhSvc` unless `-NoRestart` is supplied.
+
+Verify `ossec.log` shows a monitoring line for each candidate and realtime FIM started.
+
+## 4. Activate Step 15 on MGMTNB08
+
+```powershell
+.\Step15-Activate.cmd
+```
+
+This stops the current supervisor/task, points `ops\step13.local.json` at `importer.step15.pilot.json`, and intentionally leaves the scheduled task stopped.
+
+Then run:
+
+```powershell
+.\Step13-Preflight.cmd
+```
+
+If PASS:
+
+```powershell
+Start-ScheduledTask -TaskName "WazuhAuditImporter-Step13"
+Start-Sleep -Seconds 10
+.\Step13-Status.cmd
+```
+
+The status should show 25 candidate states. Pending candidates should settle at `BaselineReviewRequired`; approved candidates may progress through the normal review pipeline.
+
+## 5. Safe first live test
+
+Use a newly added pending candidate, for example `1180004`, with a legacy-filtered filename so the test itself is never intended for Solr:
+
+```powershell
+# FLOSVR01
+$testFile = "C:\Shares-DFS\FastTrack\Candidate\To 1189999\1180004\DNI_STEP15_GATE_TEST.txt"
+Set-Content -LiteralPath $testFile -Value "Step 15 pending-baseline gate test $(Get-Date -Format o)"
+```
+
+After 20-30 seconds:
+
+```powershell
+# MGMTNB08
+.\Step13-Status.cmd
+```
+
+Expected:
 
 ```text
-Wazuh event
-→ candidate reconciliation
-→ baseline gate
-→ Step 10A action plan
-→ Step 10B reviewed payload
-→ Step 11 preflight
-→ READY_FOR_APPROVAL
-→ separate explicit solr-execute --apply
+candidate=1180004
+worker version advances
+stage=BaselineReviewRequired
 ```
 
-Step 14E does not alter this boundary.
+and there must be no Step 10A/10B preparation, no `READY_FOR_APPROVAL`, and no Solr write for that candidate until its baseline is explicitly approved.
 
-See `docs/STEP14E_ACCEPTANCE.md` for acceptance criteria and `docs/STEP14E_PILOT_EVIDENCE.md` for the validated pilot evidence carried into this reporting stage.
+Remove the filtered test file afterward and let the delete event reconcile under the same baseline gate.
+
+## 6. Post-activation report
+
+```powershell
+.\Step15-PostActivate-Check.cmd
+```
+
+This prints baseline status, read-only Step 14D recovery inspection, and Step 14E metrics for the 25-candidate config. It does not auto-apply any Solr mutation.
+
+For a report only:
+
+```powershell
+.\Step15-Report.cmd
+```
+
+## Rollback
+
+If the cohort must be rolled back operationally, stop Step 13 and reactivate the prior five-candidate config:
+
+```powershell
+.\Step14B-Activate.cmd
+```
+
+Then re-apply the five-candidate FLOSVR01 FIM allowlist using the prior Step 14B script and restart the scheduled task only after `Step13-Preflight.cmd` passes.
+
+Baseline history and prior audit/mutation evidence remain intact.
+
+See `docs\STEP15_ACCEPTANCE.md` for acceptance criteria.

@@ -1,0 +1,21 @@
+{
+  "step": "15",
+  "static_checks": {
+    "config_exact_25": true,
+    "worker_drain_25": true,
+    "hard_limit_25": true,
+    "fim_exact_count_guard": true,
+    "fim_refuses_rootwide": true,
+    "fim_requires_mgmtnb08": true,
+    "activation_exact_ids": true,
+    "preflight_collision": true,
+    "baseline_capture_uses_step15": true,
+    "tests_step15_accept": true,
+    "tests_step15_reject_26": true,
+    "tests_guard_last_member": true,
+    "tests_guard_outside": true
+  },
+  "all_passed": true,
+  "expected_self_tests": 125,
+  "dotnet_runtime_available": false
+}
