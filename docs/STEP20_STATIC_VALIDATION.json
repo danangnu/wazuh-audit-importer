@@ -1,0 +1,18 @@
+{
+  "step": 20,
+  "scope": ["1180019"],
+  "authoring_validation": "non-greedy Aspose banner cleanup and regression test added; runtime validation pending",
+  "checks": [
+    "CLI routes review, approval preview, missing-only acknowledgement and apply separately",
+    "policy requires pending baseline and unchanged live fingerprint",
+    "policy requires exactly one identified missing document, zero stale documents and zero conflicts",
+    "approval eligibility requires a missing-file extension supported by Step 10B (.txt, .html, .htm, .doc, .docx, .docm or .rtf)",
+    "Aspose.Words 24.9.0 path preserves the supplied text conversion while safely removing repeated evaluation banners without swallowing intervening document content",
+    "policy requires every other eligible document to match the current Solr state",
+    "Step 17, 18 and 19 implementation files and prior tests remain unchanged",
+    "review writes local reports only; approval writes baseline enrollment only"
+  ],
+  "offline_test_cases_declared": 148,
+  "runtime_validation": "pending: .NET SDK is unavailable in the authoring workspace; MGMTNB08 must pass Restore-And-Preview.cmd (148/148) before fresh Step 20 payload generation",
+  "live_review_and_solr": "pending: no FLOSVR01, MariaDB or Solr access was available in the authoring workspace"
+}

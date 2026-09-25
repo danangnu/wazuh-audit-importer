@@ -13,7 +13,7 @@
   "failure_semantics": "failed/processing latest Solr mutation is an operator stop condition; transient collection/read failures retry without Solr writes",
   "legacy_extraction": {
     "txt_html_htm": "ported using ReadAllText",
-    "word_rtf": "blocked until Aspose.Words 24.9 legacy path is ported/validated",
+    "word_rtf": "ported using Aspose.Words 24.9.0 Document.ToString(SaveFormat.Text) plus exact legacy evaluation-banner cleanup; MGMTNB08 runtime validation pending",
     "pdf": "blocked until PDFBox 1.8.2 legacy path is ported/validated",
     "empty_document_rule": "ported from legacy doIndexing"
   }

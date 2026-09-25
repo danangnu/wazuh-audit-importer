@@ -435,6 +435,52 @@ cases.Add(("Step 10B empty txt is blocked exactly as legacy doIndexing", () =>
     finally { Directory.Delete(root, true); }
 }));
 
+cases.Add(("Step 10B Word extraction matches Aspose 24.9 text conversion and removes legacy banners", () =>
+{
+    var root = Path.Combine(Path.GetTempPath(), "wai-step10b-aspose-" + Guid.NewGuid().ToString("N"));
+    var candidate = Path.Combine(root, "1180019"); Directory.CreateDirectory(candidate);
+    var file = Path.Combine(candidate, "resume.docx");
+    try
+    {
+        var document = new Aspose.Words.Document();
+        var builder = new Aspose.Words.DocumentBuilder(document);
+        builder.Writeln("Legacy content for candidate 1180019.");
+        builder.Writeln("End of legacy document content.");
+        document.Save(file);
+
+        var info = new FileInfo(file);
+        var action = new SolrStoredAction(6, 3, settings.SourceInstance, settings.AgentId, "1180019", 22,
+            2, "index_document", "planned", "missing_in_solr", "resumedocx",
+            @"G:\Candidate\To 1189999\1180019\resume.docx", file, (ulong)info.Length, info.LastWriteTimeUtc, "aspose");
+        var payload = SolrPayloadBuilder.Build(action, root, DateTime.UtcNow);
+        Assert(payload.Status == "ready" && payload.Extractor == "legacy_aspose_words_24_9");
+        Assert(payload.PayloadJson!.Contains("Legacy content for candidate 1180019.", StringComparison.Ordinal));
+        Assert(payload.PayloadJson.Contains("End of legacy document content.", StringComparison.Ordinal));
+        Assert(!payload.PayloadJson.Contains("Evaluation Only. Created with Aspose.Words", StringComparison.Ordinal));
+    }
+    finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+}));
+
+cases.Add(("Step 10B removes the exact legacy Aspose evaluation notices", () =>
+{
+    const string copyBanner = "Created with an evaluation copy of Aspose.Words. To remove all limitations, you can use Free Temporary License https://products.aspose.com/words/temporary-license/";
+    var raw = $"before {copyBanner} middle Evaluation Only. Created with Aspose.Words trial text Aspose Pty Ltd. after";
+    var cleaned = LegacyContentExtractor.RemoveLegacyAsposeEvaluationBanners(raw);
+    Assert(cleaned == "before  middle  after");
+}));
+
+cases.Add(("Step 10B removes repeated Aspose evaluation banners without deleting document text between them", () =>
+{
+    const string body = "John McLean worked in customer support and operations for several years.";
+    var raw = $"before Evaluation Only. Created with Aspose.Words first notice Aspose Pty Ltd. {body} Evaluation Only. Created with Aspose.Words second notice Aspose Pty Ltd. after";
+    var cleaned = LegacyContentExtractor.RemoveLegacyAsposeEvaluationBanners(raw);
+    Assert(cleaned.Contains(body, StringComparison.Ordinal));
+    Assert(cleaned.StartsWith("before", StringComparison.Ordinal));
+    Assert(cleaned.EndsWith("after", StringComparison.Ordinal));
+    Assert(!cleaned.Contains("Evaluation Only. Created with Aspose.Words", StringComparison.Ordinal));
+    Assert(!cleaned.Contains("Aspose Pty Ltd.", StringComparison.Ordinal));
+}));
+
 cases.Add(("Step 10B PDF blocks rather than silently changing the legacy extractor", () =>
 {
     var root = Path.Combine(Path.GetTempPath(), "wai-step10b-" + Guid.NewGuid().ToString("N"));
@@ -1094,11 +1140,42 @@ cases.Add(("Step 19 rejects high drift and candidates outside its exact batch", 
 }));
 
 var failed = 0;
+cases.Add(("Step 20 is restricted to 1180019 and cannot reopen earlier controlled batches", () =>
+{
+    Assert(Step20MissingOnlyPolicy.ExpansionBatch.SequenceEqual(new[] { "1180019" }));
+    foreach (var id in new[] { "1180008", "1180015", "1180016", "1180017", "1180021", "1180022" })
+    {
+        try { Step20MissingOnlyPolicy.RequireExpansionCandidate(id); }
+        catch (EventConflictException) { continue; }
+        throw new Exception("Expected Step 20 scope rejection for " + id);
+    }
+}));
+
+cases.Add(("Step 20 accepts one identified missing document with all other files matched", () =>
+{
+    Assert(Step20MissingOnlyPolicy.IsSingleMissingOnly("pending", true, 2, 1, 1, 1, 0, 0));
+    Assert(Step20MissingOnlyPolicy.IsSingleMissingOnly("pending", true, 1, 0, 0, 1, 0, 0));
+    Assert(Step20MissingOnlyPolicy.IsSupportedLegacyExtractorPath(@"G:\Candidate\1180019\missing.txt"));
+    foreach (var extension in new[] { ".doc", ".docx", ".docm", ".rtf" })
+        Assert(Step20MissingOnlyPolicy.IsSupportedLegacyExtractorPath(@"G:\Candidate\1180019\missing" + extension));
+    Assert(Step20MissingOnlyPolicy.IsSupportedLegacyExtractorPath(@"G:\Candidate\1180019\missing.pdf") == false);
+}));
+
+cases.Add(("Step 20 blocks stale documents, conflicts, changed fingerprints and approved baselines", () =>
+{
+    Assert(!Step20MissingOnlyPolicy.IsSingleMissingOnly("pending", true, 2, 2, 1, 1, 1, 0));
+    Assert(!Step20MissingOnlyPolicy.IsSingleMissingOnly("pending", true, 1, 2, 0, 1, 2, 0));
+    Assert(!Step20MissingOnlyPolicy.IsSingleMissingOnly("pending", true, 2, 1, 1, 1, 0, 1));
+    Assert(!Step20MissingOnlyPolicy.IsSingleMissingOnly("pending", true, 2, 1, 0, 1, 0, 0));
+    Assert(!Step20MissingOnlyPolicy.IsSingleMissingOnly("pending", false, 2, 1, 1, 1, 0, 0));
+    Assert(!Step20MissingOnlyPolicy.IsSingleMissingOnly("approved", true, 2, 1, 1, 1, 0, 0));
+}));
+
 foreach (var (name, run) in cases)
 {
     try { run(); Console.WriteLine("PASS: " + name); }
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E/Step16/Step17/Step18/Step19 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E/Step16/Step17/Step18/Step19/Step20 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;

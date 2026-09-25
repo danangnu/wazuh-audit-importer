@@ -1,8 +1,7 @@
-feat: add Step 19 controlled SmallDrift review and approval
+fix(step20): preserve DOCX text during Aspose banner cleanup
 
-Add fingerprint-checked review and individual baseline approval for candidates
-1180015, 1180021, and 1180022. Keep Solr reconciliation behind the existing
-read-only preflight and explicit apply gates.
+Strip evaluation notices with non-greedy matching so text between
+repeated banners is retained. Add regression coverage for repeated
+notices.
 
-Validate all three candidate repairs with post-commit verification and
-HealthyTerminal recovery inspections.
+Validation: Restore-And-Preview passed; 148/148 tests passed.

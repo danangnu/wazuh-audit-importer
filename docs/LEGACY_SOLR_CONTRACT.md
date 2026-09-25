@@ -34,13 +34,23 @@ sensitive settings.
 
 The supplied `SolrIndexing.documentProcessing` dispatches `.pdf` to PDFBox
 `PDFTextStripper`, Word/RTF formats to `classDocument.ExtractTextUsingAspose`,
-and TXT/HTML/HTM to `My.Computer.FileSystem.ReadAllText`. `classDocument` uses
-Aspose.Words 24.9.0 and removes the Aspose evaluation banners. `PDfProcessing`
-uses PDFBox 1.8.2. `doIndexing` returns `EmptyDocument` when the extracted text,
-after removing characters outside `[a-zA-Z0-9_.]`, has length zero.
+and TXT/HTML/HTM to `My.Computer.FileSystem.ReadAllText`. The legacy Word path
+constructs `Aspose.Words.Document(filePath)`, calls `ToString(SaveFormat.Text)`,
+removes the exact `Created with an evaluation copy ... temporary-license/`
+notice with `String.Replace`, then removes
+`Evaluation Only\. Created with Aspose\.Words.*Aspose Pty Ltd\.` using
+`RegexOptions.Singleline`. That supplied regex is greedy and can erase document
+text between repeated Aspose banners. Step 10B uses the same start/end markers
+with non-greedy matching (`.*?`) so each banner is removed independently while
+intervening document text is preserved. A repeated-banner regression test covers
+this behavior. Aspose.Words is version 24.9.0. The legacy function returns
+`Nothing` when extraction throws; Step 10B records an explicit blocked payload
+for that case. `PDfProcessing` uses PDFBox 1.8.2. `doIndexing` returns
+`EmptyDocument` when extracted text, after removing characters outside
+`[a-zA-Z0-9_.]`, has length zero.
 
-Step 10B ports only the ReadAllText branch now. Word/PDF actions remain blocked
-until those exact legacy extraction paths are validated in the .NET 9 tool.
+Step 10B now ports the ReadAllText and Aspose.Words 24.9.0 branches. The PDF
+action remains blocked until the exact PDFBox 1.8.2 path is ported and validated.
 
 
 ## Step 12 same-path source changes

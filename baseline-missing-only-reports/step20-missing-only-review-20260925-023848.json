@@ -1,0 +1,31 @@
+{
+  "GeneratedAtUtc": "2026-09-25T02:38:48.7180812Z",
+  "Rows": [
+    {
+      "CandidateId": "1180019",
+      "BaselineSha256": "06dd36f0c1f7696e6b5979fe87c98c0f718b8824166238c2832e406af0db0d91",
+      "FingerprintMatch": true,
+      "DiskFileCount": 2,
+      "EligibleFileCount": 2,
+      "SolrDocumentCount": 1,
+      "MatchCount": 1,
+      "MissingCount": 1,
+      "StaleCount": 0,
+      "OtherConflictCount": 0,
+      "EligibleForStep20Approval": true,
+      "Missing": [
+        {
+          "Status": "MISSING_IN_SOLR",
+          "CanonicalPath": "G:\\Candidate\\To 1189999\\1180019\\1180019 2025 08 19 Mclean, John Resume.docx",
+          "RelativePath": "1180019 2025 08 19 Mclean, John Resume.docx",
+          "ExpectedLegacyId": "1180019-2025-08-19-mclean-john-resumedocx",
+          "SolrId": null,
+          "SolrLastUpdate": null,
+          "Detail": "Eligible FLOSVR01 file has no Solr document with the canonical path."
+        }
+      ],
+      "Stale": [],
+      "Detail": "Eligible for the controlled Step 20 missing-only approval after exact operator review."
+    }
+  ]
+}

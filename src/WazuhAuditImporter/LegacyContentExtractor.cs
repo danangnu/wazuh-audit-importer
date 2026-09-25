@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using Aspose.Words;
 
 namespace WazuhAuditImporter;
 
@@ -18,6 +19,9 @@ public sealed record LegacyExtractionResult(
 public static class LegacyContentExtractor
 {
     private static readonly Regex LegacyNonContent = new("[^a-zA-Z0-9_.]+", RegexOptions.Compiled);
+    private const string LegacyAsposeEvaluationCopyBanner = "Created with an evaluation copy of Aspose.Words. To remove all limitations, you can use Free Temporary License https://products.aspose.com/words/temporary-license/";
+    private static readonly Regex LegacyAsposeEvaluationOnlyBanner = new(
+        "Evaluation Only\\. Created with Aspose\\.Words.*?Aspose Pty Ltd\\.", RegexOptions.Singleline | RegexOptions.Compiled);
 
     public static LegacyExtractionResult ExtractForAction(SolrStoredAction action, string workerRoot)
     {
@@ -63,9 +67,20 @@ public static class LegacyContentExtractor
             case ".docx":
             case ".docm":
             case ".rtf":
-                // Supplied legacy app uses Aspose.Words 24.9.0. We deliberately do
-                // not substitute a different extractor in a supposedly compatible payload.
-                return Block("legacy_aspose_words_24_9_not_ported", "legacy_extractor_not_ported", actualLength, actualWrite, sourceHash);
+                extractor = "legacy_aspose_words_24_9";
+                try
+                {
+                    var document = new Document(source);
+                    content = document.ToString(SaveFormat.Text);
+                    content = RemoveLegacyAsposeEvaluationBanners(content);
+                }
+                catch (Exception)
+                {
+                    // The legacy function returns Nothing on extraction errors. Step 10B
+                    // records a blocked payload so it can never be mistaken for valid text.
+                    return Block(extractor, "legacy_aspose_extraction_failed", actualLength, actualWrite, sourceHash);
+                }
+                break;
             case ".pdf":
                 // Supplied legacy app uses PDFBox 1.8.2 PDFTextStripper.
                 return Block("legacy_pdfbox_1_8_2_not_ported", "legacy_extractor_not_ported", actualLength, actualWrite, sourceHash);
@@ -88,6 +103,12 @@ public static class LegacyContentExtractor
     private static LegacyExtractionResult Block(string extractor, string reason, ulong? length, DateTime? write,
         string? sourceHash = null, string? contentHash = null, ulong? chars = null) =>
         new("blocked", extractor, null, sourceHash, contentHash, chars, length, write, reason);
+
+    internal static string RemoveLegacyAsposeEvaluationBanners(string content)
+    {
+        var result = content.Replace(LegacyAsposeEvaluationCopyBanner, string.Empty, StringComparison.Ordinal);
+        return LegacyAsposeEvaluationOnlyBanner.Replace(result, string.Empty);
+    }
 
     public static string HexSha256(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
 }

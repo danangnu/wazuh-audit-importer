@@ -1,0 +1,2 @@
+candidate_id,baseline_sha256,fingerprint_match,eligible,solr,match,missing,stale,other,step20_approval
+"1180019","06dd36f0c1f7696e6b5979fe87c98c0f718b8824166238c2832e406af0db0d91","true",2,1,1,1,0,0,"yes"

@@ -1,4 +1,8 @@
-# Step 19 — third controlled SmallDrift batch
+# Step 20 — one missing document for 1180019
+
+Step 20 selects only candidate `1180019` from the September 24 read-only Step 16 triage. A fresh review must show the unchanged pending fingerprint, exactly one missing current document, zero stale Solr documents, zero other conflicts, every other eligible file matched, and a file type supported by Step 10B. The September 25 review found the missing file is `.docx`. Its network hash matched the supplied file, but the saved Step 10B payload contained only 44 characters because the Aspose Evaluation Only banner cleanup matched greedily across repeated banners. The cleanup now uses non-greedy matching with a regression test that preserves document text between banners. Mutation 43 contains the truncated payload and must never be applied. Deploy the corrected source, pass MGMTNB08 restore/build/self-tests (148/148), then create and review a fresh payload before any Solr apply. See `docs/STEP20_ACCEPTANCE.md`. The 25-candidate allowlist and prior Step 17/18/19 scopes are unchanged.
+
+## Earlier Step 19 expansion
 
 Step 19 selects only 1180015, 1180021, and 1180022 from the latest read-only Step 16 triage. Start with `Step19-Review-SmallDrift.cmd`; each candidate requires a fresh matching fingerprint and exactly one missing and one stale document. Individual approval only records MariaDB enrollment. All later Solr changes still require reviewed Step 11 preflight and explicit manual apply. See `docs/STEP19_ACCEPTANCE.md`. Prior Step 17/18 policies and the 25-candidate FIM allowlist remain unchanged.
 
