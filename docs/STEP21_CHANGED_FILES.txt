@@ -1,0 +1,13 @@
+.gitignore
+MANIFEST.sha256
+README.md
+Step21-Approve-SmallDrift.cmd
+Step21-Review-SmallDrift.cmd
+docs/STEP21_ACCEPTANCE.md
+docs/STEP21_CHANGED_FILES.txt
+docs/STEP21_COMMIT_MESSAGE.txt
+docs/STEP21_STATIC_VALIDATION.json
+src/WazuhAuditImporter/BaselineTriage.cs
+src/WazuhAuditImporter/Cli.cs
+src/WazuhAuditImporter/Step21SmallDrift.cs
+tests/WazuhAuditImporter.SelfTests/Program.cs

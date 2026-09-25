@@ -33,7 +33,12 @@ public sealed record BaselineTriageRow(
     int StaleCount,
     int OtherConflictCount,
     bool EligibleForCleanApproval,
-    string Detail);
+    string Detail)
+{
+    public string CountsSource => Disposition == BaselineTriageDisposition.Approved
+        ? "stored_baseline" : LiveBaselineSha256 is not null ? "live_revalidation" : "unavailable";
+    public bool LiveStateChecked => LiveBaselineSha256 is not null;
+}
 
 public static class BaselineTriagePolicy
 {
@@ -97,6 +102,7 @@ public static class BaselineTriageService
 
         Console.WriteLine("=== Step 16 baseline triage ===");
         Console.WriteLine("Pending baselines are revalidated against current FLOSVR01 metadata + Solr GET.");
+        Console.WriteLine("Approved rows show historical STORED BASELINE counts, not current Solr state. Use recovery-inspect for live verification.");
         Console.WriteLine("This command is read-only: no baseline approvals and no Solr writes.\n");
 
         foreach (var id in ids)
@@ -118,7 +124,7 @@ public static class BaselineTriageService
                     stored.DiskFileCount, stored.EligibleFileCount, stored.SkippedFileCount,
                     stored.SolrDocumentCount, stored.MatchCount, stored.MissingCount,
                     stored.StaleCount, stored.OtherConflictCount, false,
-                    "Already approved; Step 16 clean-pending approval is not applicable."));
+                    "Already approved; these are historical stored baseline counts. No live state check was performed for this row. Use recovery-inspect for current disk/Solr state."));
                 continue;
             }
 
@@ -140,6 +146,7 @@ public static class BaselineTriageService
             Console.WriteLine(
                 $"candidate={row.CandidateId} status={row.EnrollmentStatus.ToUpperInvariant()} triage={row.Disposition.ToString().ToUpperInvariant()} " +
                 $"clean_approval={(row.EligibleForCleanApproval ? "YES" : "NO")} sha256={row.StoredBaselineSha256 ?? "n/a"} " +
+                $"counts_source={row.CountsSource} live_checked={row.LiveStateChecked.ToString().ToLowerInvariant()} " +
                 $"disk={row.DiskFileCount} eligible={row.EligibleFileCount} solr={row.SolrDocumentCount} " +
                 $"match={row.MatchCount} missing={row.MissingCount} stale={row.StaleCount} other={row.OtherConflictCount}" +
                 (row.LiveFingerprintMatchesStored is null ? string.Empty : $" fingerprint_match={row.LiveFingerprintMatchesStored.Value.ToString().ToLowerInvariant()}"));
@@ -243,7 +250,7 @@ public static class BaselineTriageService
         }, new JsonSerializerOptions { WriteIndented = true }));
 
         var csv = new StringBuilder();
-        csv.AppendLine("candidate_id,enrollment_status,triage,clean_approval,stored_sha256,live_sha256,fingerprint_match,disk,eligible,skipped,solr,match,missing,stale,other,detail");
+        csv.AppendLine("candidate_id,enrollment_status,triage,clean_approval,stored_sha256,live_sha256,fingerprint_match,disk,eligible,skipped,solr,match,missing,stale,other,detail,counts_source,live_checked");
         foreach (var r in rows)
         {
             csv.AppendLine(string.Join(',', new[]
@@ -253,7 +260,8 @@ public static class BaselineTriageService
                 r.DiskFileCount.ToString(CultureInfo.InvariantCulture), r.EligibleFileCount.ToString(CultureInfo.InvariantCulture),
                 r.SkippedFileCount.ToString(CultureInfo.InvariantCulture), r.SolrDocumentCount.ToString(CultureInfo.InvariantCulture),
                 r.MatchCount.ToString(CultureInfo.InvariantCulture), r.MissingCount.ToString(CultureInfo.InvariantCulture),
-                r.StaleCount.ToString(CultureInfo.InvariantCulture), r.OtherConflictCount.ToString(CultureInfo.InvariantCulture), Csv(r.Detail)
+                r.StaleCount.ToString(CultureInfo.InvariantCulture), r.OtherConflictCount.ToString(CultureInfo.InvariantCulture), Csv(r.Detail),
+                Csv(r.CountsSource), Csv(r.LiveStateChecked.ToString().ToLowerInvariant())
             }));
         }
         File.WriteAllText(csvPath, csv.ToString());
@@ -263,10 +271,12 @@ public static class BaselineTriageService
         md.AppendLine();
         md.AppendLine("Read-only triage of the controlled 25-candidate cohort. Only `CLEANPENDING` rows are eligible for the Step 16 clean-only approval command; no drifted candidate is auto-approved.");
         md.AppendLine();
-        md.AppendLine("| Candidate | Enrollment | Triage | Clean approval | Match | Missing | Stale | Other |");
-        md.AppendLine("|---|---|---|---:|---:|---:|---:|---:|");
+        md.AppendLine("Approved rows contain historical stored baseline counts and have not been checked live. Use `recovery-inspect` for current Solr state.");
+        md.AppendLine();
+        md.AppendLine("| Candidate | Enrollment | Triage | Counts source | Live checked | Clean approval | Match | Missing | Stale | Other |");
+        md.AppendLine("|---|---|---|---|---|---:|---:|---:|---:|---:|");
         foreach (var r in rows)
-            md.AppendLine($"| {r.CandidateId} | {r.EnrollmentStatus} | {r.Disposition} | {(r.EligibleForCleanApproval ? "YES" : "NO")} | {r.MatchCount} | {r.MissingCount} | {r.StaleCount} | {r.OtherConflictCount} |");
+            md.AppendLine($"| {r.CandidateId} | {r.EnrollmentStatus} | {r.Disposition} | {r.CountsSource} | {r.LiveStateChecked} | {(r.EligibleForCleanApproval ? "YES" : "NO")} | {r.MatchCount} | {r.MissingCount} | {r.StaleCount} | {r.OtherConflictCount} |");
         md.AppendLine();
         md.AppendLine("High-drift, conflict, stale-capture and other drifted baselines remain operator-gated. This report does not authorize Solr writes.");
         File.WriteAllText(mdPath, md.ToString());

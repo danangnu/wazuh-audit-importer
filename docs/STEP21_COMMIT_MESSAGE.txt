@@ -1,0 +1,9 @@
+feat(step21): add bounded SmallDrift review and approval
+
+Add exact candidate patterns for 1180003, 1180006, 1180016 and 1180017.
+Validate fingerprints, action evidence, scoped paths, distinct IDs and
+supported extractors before individual baseline enrollment.
+
+Label Step 16 approved counts as historical stored-baseline evidence.
+Preserve the corrected Step 20 Aspose cleanup and existing execution gates.
+Add 18 offline regression cases and the Step 21 deployment runbook.

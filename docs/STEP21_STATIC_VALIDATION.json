@@ -1,0 +1,22 @@
+{
+  "step": 21,
+  "checked_at_utc": "2026-09-25T04:32:57.251816+00:00",
+  "input_package": "WazuhAuditImporter_NET9_Step20_Updated.zip",
+  "input_sha256": "1de72e79b49050581303d80e4ff59b85870fce08873f193e4ba3cb230519cc35",
+  "static_validation": "PASS",
+  "checks": {
+    "csharp_syntax": "57 C# files parsed with tree-sitter-c-sharp; no syntax errors. This is not compilation.",
+    "project_xml": "2 csproj files parsed successfully",
+    "existing_json": "19 existing JSON files parsed successfully",
+    "existing_self_tests": "Original 148 test definitions preserved verbatim before the appended Step 21 section.",
+    "self_test_definitions": 166,
+    "added_test_definitions": 18,
+    "preserved": "Step 17/18/19/20 services, corrected Step 20 extractor, SQL schema, configuration, FIM allowlist, ops scripts, worker and Solr execution files byte-identical to input ZIP.",
+    "approval_review": "Review reports only; preview returns before repository approval. Apply requires acknowledgment and fresh exact evidence.",
+    "packaging": "MANIFEST.sha256 covers every other packaged file. ZIP integrity and manifest checked after creation."
+  },
+  "dotnet_build": "NOT RUN: .NET SDK unavailable in authoring environment; download endpoint timed out.",
+  "runtime_self_tests": "NOT RUN: require Restore-And-Preview.cmd on MGMTNB08; expected 166/166.",
+  "live_acceptance": "PENDING: no Step 21 database approval, source mutation or Solr update was performed.",
+  "prior_runtime_evidence": "Step 20 148/148 self-tests and candidate 1180019 mutation 44 successful, reported by operator on MGMTNB08. This does not validate Step 21."
+}

@@ -1,3 +1,40 @@
+# Step 21 — bounded SmallDrift review and individual enrollment
+
+Start with `Step21-Review-SmallDrift.cmd 1180003` after the deployment/build gate in
+`docs/STEP21_ACCEPTANCE.md`. The exact cohort is `1180003`, `1180006`, `1180016`,
+and `1180017`. The first pair requires two missing and two stale documents; the
+second pair requires one missing and two stale documents. Each candidate must
+still have its reviewed pending fingerprint, zero matched documents, zero other
+conflicts, exact distinct paths/IDs, and supported extractors for every index.
+
+Review produces JSON/CSV/Markdown evidence only. Approval preview is read-only.
+`Step21-Approve-SmallDrift.cmd <candidate-id> <reviewed-sha256> --ack-small-drift --apply`
+records individual enrollment in MariaDB. Source files and Solr are not modified
+by these commands. Later Step 10/11 payload review and explicit Solr execution
+remain required. All proposed deletions must be reviewed separately; document
+pairing is not inferred from counts or names.
+
+Step 16 now labels the source of counts in console/JSON/CSV/Markdown:
+`stored_baseline` with `live_checked=false` for approved rows, `live_revalidation`
+for checked pending rows, and `unavailable` for missing baselines. The approved
+counts are historical. This explains the older `missing=1` for candidate
+`1180019`; its live recovery inspection confirmed two matches and no drift.
+
+Validation: **166 offline self-tests declared**, including 18 new Step 21 and
+triage-reporting tests. C# syntax and package checks were performed in the
+authoring workspace. The .NET SDK is unavailable there; **restore, compile, and
+166/166 test execution remain required on MGMTNB08**. No live approval or Solr
+operation was performed while authoring this package.
+
+Step 20 was completed on MGMTNB08 on September 25, 2026: mutation 44, action 38,
+verified apply and HealthyTerminal; eligible=2, solr=2, match=2, missing=0,
+stale=0. The corrected payload contained 1,480 characters/205 words. Mutation 43
+contains the old truncated payload and must remain unapplied. The original
+Step 20 build passed 148/148 tests. Earlier sections below document their release
+history and test counts.
+
+---
+
 # Step 20 — one missing document for 1180019
 
 Step 20 selects only candidate `1180019` from the September 24 read-only Step 16 triage. A fresh review must show the unchanged pending fingerprint, exactly one missing current document, zero stale Solr documents, zero other conflicts, every other eligible file matched, and a file type supported by Step 10B. The September 25 review found the missing file is `.docx`. Its network hash matched the supplied file, but the saved Step 10B payload contained only 44 characters because the Aspose Evaluation Only banner cleanup matched greedily across repeated banners. The cleanup now uses non-greedy matching with a regression test that preserves document text between banners. Mutation 43 contains the truncated payload and must never be applied. Deploy the corrected source, pass MGMTNB08 restore/build/self-tests (148/148), then create and review a fresh payload before any Solr apply. See `docs/STEP20_ACCEPTANCE.md`. The 25-candidate allowlist and prior Step 17/18/19 scopes are unchanged.

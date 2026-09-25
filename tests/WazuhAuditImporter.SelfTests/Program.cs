@@ -1171,11 +1171,280 @@ cases.Add(("Step 20 blocks stale documents, conflicts, changed fingerprints and 
     Assert(!Step20MissingOnlyPolicy.IsSingleMissingOnly("approved", true, 2, 1, 1, 1, 0, 0));
 }));
 
+
+// Step 21: synthetic exact evidence; no network, DB, source documents, or Solr writes.
+(BaselineEnrollmentSnapshot Stored, BaselineEnrollmentCapture Live) Step21Fixture(string id)
+{
+    var missingCount = id is "1180003" or "1180006" ? 2 : 1;
+    var comparisons = new List<SolrPathComparison>();
+    for (var n = 1; n <= missingCount; n++)
+    {
+        var path = @"G:\Candidate\To 1189999\" + id + "\\" + id + $" current {n}.txt";
+        comparisons.Add(new("MISSING_IN_SOLR", path, id + $" current {n}.txt",
+            SolrPathMapper.GenerateLegacySolrId(path), null, null, null));
+    }
+    for (var n = 1; n <= 2; n++)
+    {
+        var path = @"G:\Candidate\To 1189999\" + id + "\\" + id + $" old {n}.txt";
+        comparisons.Add(new("STALE_IN_SOLR", path, null, null,
+            SolrPathMapper.GenerateLegacySolrId(path), null, null));
+    }
+    var evidence = new BaselineEnrollmentEvidence(id, @"\\FLOSVR01\FastTrack\Candidate\To 1189999\" + id,
+        @"G:\Candidate\To 1189999", missingCount, missingCount, 0, 2, 0, missingCount, 2, 0,
+        comparisons, Array.Empty<LegacyIdCollision>());
+    var (json, sha) = BaselineEnrollmentService.ComputeFingerprint(evidence);
+    var live = new BaselineEnrollmentCapture(evidence, sha, json, DateTime.UtcNow);
+    var stored = new BaselineEnrollmentSnapshot(1, id, "pending", sha, missingCount, missingCount, 0,
+        2, 0, missingCount, 2, 0, DateTime.UtcNow, null, null, null);
+    return (stored, live);
+}
+
+void Step21RejectEvidence(BaselineEnrollmentEvidence evidence, string expectedReason)
+{
+    var f = Step21Fixture(evidence.CandidateId);
+    // Matching hashes are deliberate: malformed evidence must also be rejected independently of freshness.
+    var (json, sha) = BaselineEnrollmentService.ComputeFingerprint(evidence);
+    var live = new BaselineEnrollmentCapture(evidence, sha, json, DateTime.UtcNow);
+    var stored = f.Stored with { BaselineSha256 = sha };
+    var review = Step21SmallDriftService.BuildReview(stored, live);
+    Assert(!review.EligibleForStep21Approval);
+    Assert(review.Detail.Contains(expectedReason, StringComparison.OrdinalIgnoreCase), review.Detail);
+    try { Step21SmallDriftPolicy.RequireReviewedPattern(stored, live); }
+    catch (EventConflictException) { return; }
+    throw new Exception("Expected identical preview/approval rejection.");
+}
+
+cases.Add(("Step 21 accepts each scoped candidate and displays every proposed action", () =>
+{
+    Assert(Step21SmallDriftPolicy.ExpansionBatch.SequenceEqual(new[] { "1180003", "1180006", "1180016", "1180017" }));
+    foreach (var id in Step21SmallDriftPolicy.ExpansionBatch)
+    {
+        var f = Step21Fixture(id);
+        Step21SmallDriftPolicy.RequireReviewedPattern(f.Stored, f.Live);
+        var review = Step21SmallDriftService.BuildReview(f.Stored, f.Live);
+        Assert(review.EligibleForStep21Approval);
+        Assert(review.ProposedIndexCount == (id is "1180003" or "1180006" ? 2 : 1));
+        Assert(review.ProposedDeleteCount == 2);
+        Assert(review.MissingExtractors.All(x => x == "legacy_readalltext"));
+        Assert(!Step17SmallDriftPolicy.IsPilotCandidate(id) && !Step18SmallDriftPolicy.IsExpansionCandidate(id) &&
+               !Step19SmallDriftPolicy.IsExpansionCandidate(id) && !Step20MissingOnlyPolicy.IsExpansionCandidate(id));
+    }
+}));
+
+cases.Add(("Step 21 cannot admit earlier batches or unrelated high/moderate/stale captures", () =>
+{
+    foreach (var id in new[] { "1180000", "1180002", "1180005", "1180008", "1180011", "1180019", "1180021", "1180023", "1180097" })
+    {
+        Assert(!Step21SmallDriftPolicy.IsExpectedPattern(id, "pending", true, 2, 2, 0, 2, 2, 0));
+        try { Step21SmallDriftPolicy.RequireExpansionCandidate(id); }
+        catch (EventConflictException) { continue; }
+        throw new Exception("Unexpected batch admission: " + id);
+    }
+}));
+
+cases.Add(("Step 21 rejects counts swapped between candidates and any widened or inconsistent pattern", () =>
+{
+    Assert(!Step21SmallDriftPolicy.IsExpectedPattern("1180003", "pending", true, 1, 2, 0, 1, 2, 0));
+    Assert(!Step21SmallDriftPolicy.IsExpectedPattern("1180016", "pending", true, 2, 2, 0, 2, 2, 0));
+    foreach (var id in Step21SmallDriftPolicy.ExpansionBatch)
+    {
+        var f = Step21Fixture(id); var m = f.Live.Evidence.MissingCount;
+        Assert(!Step21SmallDriftPolicy.IsExpectedPattern(id, "pending", false, m, 2, 0, m, 2, 0));
+        Assert(!Step21SmallDriftPolicy.IsExpectedPattern(id, "approved", true, m, 2, 0, m, 2, 0));
+        Assert(!Step21SmallDriftPolicy.IsExpectedPattern(id, "missing", true, m, 2, 0, m, 2, 0));
+        foreach (var counts in new[] {
+            new[] { m + 1, 2, 0, m, 2, 0 }, new[] { m, 3, 0, m, 2, 0 },
+            new[] { m, 2, 1, m, 2, 0 }, new[] { m, 2, 0, m + 1, 2, 0 },
+            new[] { m, 2, 0, m, 3, 0 }, new[] { m, 2, 0, m, 2, 1 },
+            new[] { -1, 2, 0, m, 2, 0 }, new[] { m, 2, 0, m, 2, -1 } })
+            Assert(!Step21SmallDriftPolicy.IsExpectedPattern(id, "pending", true,
+                counts[0], counts[1], counts[2], counts[3], counts[4], counts[5]));
+    }
+}));
+
+cases.Add(("Step 21 blocks changed fingerprints and mismatched candidate identities", () =>
+{
+    var f = Step21Fixture("1180003");
+    Assert(!Step21SmallDriftService.BuildReview(f.Stored, f.Live with { BaselineSha256 = new string('a', 64) }).EligibleForStep21Approval);
+    Assert(!Step21SmallDriftService.BuildReview(f.Stored, f.Live with { Evidence = f.Live.Evidence with { CandidateId = "1180006" } }).EligibleForStep21Approval);
+    Assert(!Step21SmallDriftService.BuildReview(f.Stored with { Status = "approved" }, f.Live).EligibleForStep21Approval);
+}));
+
+cases.Add(("Step 21 rejects evidence counts that hide missing or skipped rows", () =>
+{
+    var e = Step21Fixture("1180003").Live.Evidence;
+    Step21RejectEvidence(e with { Comparisons = e.Comparisons.Skip(1).ToArray() }, "counts");
+    Step21RejectEvidence(e with { Comparisons = e.Comparisons.SkipLast(1).ToArray() }, "counts");
+    Step21RejectEvidence(e with { DiskFileCount = 3 }, "counts");
+    Step21RejectEvidence(e with { SkippedFileCount = -1 }, "counts");
+}));
+
+cases.Add(("Step 21 rejects absent and incorrect index/delete identities", () =>
+{
+    var e = Step21Fixture("1180003").Live.Evidence;
+    foreach (var id in new string?[] { null, "", " ", "wrong-id" })
+    {
+        var rows = e.Comparisons.ToArray(); rows[0] = rows[0] with { ExpectedLegacyId = id };
+        Step21RejectEvidence(e with { Comparisons = rows }, "exact generated legacy ID");
+    }
+    var stale = e.Comparisons.ToArray(); stale[^1] = stale[^1] with { SolrId = null };
+    Step21RejectEvidence(e with { Comparisons = stale }, "actual Solr ID");
+}));
+
+cases.Add(("Step 21 rejects duplicate delete IDs and index/delete ID collisions", () =>
+{
+    var e = Step21Fixture("1180003").Live.Evidence;
+    var rows = e.Comparisons.ToArray(); rows[^1] = rows[^1] with { SolrId = rows[^2].SolrId!.ToUpperInvariant() };
+    Step21RejectEvidence(e with { Comparisons = rows }, "overlapping index/delete IDs");
+    rows[^1] = rows[^1] with { SolrId = rows[0].ExpectedLegacyId };
+    Step21RejectEvidence(e with { Comparisons = rows }, "overlapping index/delete IDs");
+}));
+
+cases.Add(("Step 21 rejects duplicate and overlapping normalized action paths", () =>
+{
+    var e = Step21Fixture("1180003").Live.Evidence;
+    var rows = e.Comparisons.ToArray(); rows[^1] = rows[^1] with { CanonicalPath = rows[^2].CanonicalPath.ToUpperInvariant().Replace('\\', '/') };
+    Step21RejectEvidence(e with { Comparisons = rows }, "overlapping action paths");
+    rows[^1] = rows[^1] with { CanonicalPath = rows[0].CanonicalPath };
+    Step21RejectEvidence(e with { Comparisons = rows }, "overlapping action paths");
+}));
+
+cases.Add(("Step 21 rejects cross-candidate and traversal delete paths", () =>
+{
+    var e = Step21Fixture("1180016").Live.Evidence;
+    foreach (var path in new[] {
+        @"G:\Candidate\To 1189999\1180017\other.txt",
+        @"G:\Candidate\To 1189999\11800160\other.txt",
+        @"G:\Candidate\To 1189999\1180016\..\1180017\other.txt",
+        @"G:\Candidate\To 1189999\1180016\.. \1180017\other.txt",
+        @"G:\Candidate\To 1189999\1180016\file.txt:stream",
+        @"G:\Candidate\To 1189999\1180016", "" })
+    {
+        var rows = e.Comparisons.ToArray(); rows[^1] = rows[^1] with { CanonicalPath = path };
+        Step21RejectEvidence(e with { Comparisons = rows }, "candidate's canonical folder");
+    }
+}));
+
+cases.Add(("Step 21 blocks unsupported extractors even when other missing files are supported", () =>
+{
+    var e = Step21Fixture("1180003").Live.Evidence;
+    var rows = e.Comparisons.ToArray();
+    var path = Path.ChangeExtension(rows[1].CanonicalPath, ".pdf");
+    rows[1] = rows[1] with { CanonicalPath = path, ExpectedLegacyId = SolrPathMapper.GenerateLegacySolrId(path) };
+    Step21RejectEvidence(e with { Comparisons = rows }, "no validated legacy payload extractor");
+}));
+
+cases.Add(("Step 21 accepts supported Word and text formats while exposing the expected extractor", () =>
+{
+    foreach (var extension in new[] { ".txt", ".HTML", ".htm", ".doc", ".docx", ".docm", ".rtf" })
+    {
+        var f = Step21Fixture("1180016"); var rows = f.Live.Evidence.Comparisons.ToArray();
+        var path = Path.ChangeExtension(rows[0].CanonicalPath, extension);
+        rows[0] = rows[0] with { CanonicalPath = path, ExpectedLegacyId = SolrPathMapper.GenerateLegacySolrId(path) };
+        var e = f.Live.Evidence with { Comparisons = rows };
+        var (json, sha) = BaselineEnrollmentService.ComputeFingerprint(e);
+        var review = Step21SmallDriftService.BuildReview(f.Stored with { BaselineSha256 = sha },
+            new BaselineEnrollmentCapture(e, sha, json, DateTime.UtcNow));
+        Assert(review.EligibleForStep21Approval);
+        Assert(review.MissingExtractors.Single() == (extension is ".txt" or ".HTML" or ".htm" ? "legacy_readalltext" : "legacy_aspose_words_24_9"));
+    }
+}));
+
+cases.Add(("Step 21 rejects hidden comparison conflicts and local collisions", () =>
+{
+    var e = Step21Fixture("1180003").Live.Evidence;
+    var rows = e.Comparisons.ToArray(); rows[0] = rows[0] with { Status = "ID_MISMATCH" };
+    Step21RejectEvidence(e with { Comparisons = rows }, "conflicting comparison");
+    Step21RejectEvidence(e with { LocalLegacyIdCollisions = new[] { new LegacyIdCollision("same-id", new[] { "a", "b" }) } }, "Collision");
+}));
+
+cases.Add(("Step 21 permits accounted-for filtered trigger files without adding index actions", () =>
+{
+    var f = Step21Fixture("1180003"); var e = f.Live.Evidence;
+    e = e with { DiskFileCount = 3, SkippedFileCount = 1, Comparisons = e.Comparisons.Append(
+        new SolrPathComparison("SKIPPED_BY_LEGACY_FILTER", e.CanonicalRoot + @"\1180003\DNI_STEP21_trigger.txt", "DNI_STEP21_trigger.txt", null, null, null, "legacy_filename_filter_dni")).ToArray() };
+    var (json, sha) = BaselineEnrollmentService.ComputeFingerprint(e);
+    var review = Step21SmallDriftService.BuildReview(f.Stored with { BaselineSha256 = sha }, new(e, sha, json, DateTime.UtcNow));
+    Assert(review.EligibleForStep21Approval && review.ProposedIndexCount == 2 && review.ProposedDeleteCount == 2);
+}));
+
+cases.Add(("Step 21 requires explicit acknowledgement before any approval DB access", () =>
+{
+    Step21SmallDriftPolicy.RequireAcknowledgement(false, false);
+    Step21SmallDriftPolicy.RequireAcknowledgement(true, true);
+    try { Step21SmallDriftService.Approve(null!, null!, "unused", "1180003", new string('a', 64), "tester", null, false, true); }
+    catch (FormatException) { return; }
+    throw new Exception("Approval reached a dependency before checking acknowledgement.");
+}));
+
+void Step21CliReject(string[] args, int expectedCode, string expectedError)
+{
+    var originalIn = Console.In;
+    var originalOut = Console.Out;
+    var originalError = Console.Error;
+    using var input = new StringReader(string.Empty);
+    using var output = new StringWriter();
+    using var error = new StringWriter();
+    int code;
+    try
+    {
+        Console.SetIn(input);
+        Console.SetOut(output);
+        Console.SetError(error);
+        code = Cli.Run(args);
+    }
+    finally
+    {
+        Console.SetIn(originalIn);
+        Console.SetOut(originalOut);
+        Console.SetError(originalError);
+    }
+    Assert(code == expectedCode, error.ToString());
+    Assert(error.ToString().Contains(expectedError, StringComparison.Ordinal), error.ToString());
+    Assert(!output.ToString().Contains("MariaDB username", StringComparison.Ordinal));
+}
+
+cases.Add(("Step 21 CLI rejects writes and acknowledgement flags on the review command", () =>
+{
+    Step21CliReject(new[] { "baseline-review-step21-small-drift", "--apply" }, 2, "--apply is only valid");
+    Step21CliReject(new[] { "baseline-review-step21-small-drift", "--ack-small-drift" }, 2, "--ack-small-drift is only valid");
+    Step21CliReject(new[] { "baseline-approve-step21-small-drift", "--ack-missing-only" }, 2, "--ack-missing-only is only valid");
+}));
+
+cases.Add(("Step 21 CLI requires candidate, token, acknowledgement and exact scope before credentials", () =>
+{
+    var root = @"\\FLOSVR01\FastTrack\Candidate\To 1189999";
+    Step21CliReject(new[] { "baseline-approve-step21-small-drift", "--worker-root", root }, 2, "requires --candidate-id");
+    Step21CliReject(new[] { "baseline-approve-step21-small-drift", "--worker-root", root, "--candidate-id", "1180003" }, 2, "requires --baseline-sha256");
+    Step21CliReject(new[] { "baseline-approve-step21-small-drift", "--worker-root", root, "--candidate-id", "1180003", "--baseline-sha256", new string('a', 64), "--apply" }, 2, "requires --ack-small-drift");
+    Step21CliReject(new[] { "baseline-review-step21-small-drift", "--worker-root", root, "--candidate-id", "1180008" }, 4, "outside this controlled batch");
+}));
+
+cases.Add(("Step 16 explicitly labels approved baseline counts as historical in serialized reports", () =>
+{
+    var row = new BaselineTriageRow("1180019", "approved", BaselineTriageDisposition.Approved,
+        new string('a', 64), null, null, 2, 2, 0, 1, 1, 1, 0, 0, false, "historical");
+    Assert(row.CountsSource == "stored_baseline" && !row.LiveStateChecked);
+    using var json = JsonDocument.Parse(JsonSerializer.Serialize(row));
+    Assert(json.RootElement.GetProperty("CountsSource").GetString() == "stored_baseline");
+    Assert(!json.RootElement.GetProperty("LiveStateChecked").GetBoolean());
+    Assert(row.MissingCount == 1); // Preserve historical evidence; do not relabel it as live health.
+}));
+
+cases.Add(("Step 16 distinguishes pending live revalidation from unavailable baseline evidence", () =>
+{
+    var row = new BaselineTriageRow("1180003", "pending", BaselineTriageDisposition.SmallDrift,
+        new string('a', 64), new string('a', 64), true, 2, 2, 0, 2, 0, 2, 2, 0, false, "live");
+    Assert(row.CountsSource == "live_revalidation" && row.LiveStateChecked);
+    var missing = row with { EnrollmentStatus = "missing", Disposition = BaselineTriageDisposition.MissingBaseline, LiveBaselineSha256 = null };
+    Assert(missing.CountsSource == "unavailable" && !missing.LiveStateChecked);
+}));
+
 foreach (var (name, run) in cases)
 {
     try { run(); Console.WriteLine("PASS: " + name); }
     catch (Exception e) { failed++; Console.Error.WriteLine("FAIL: " + name + " -- " + e.Message); }
 }
 Console.WriteLine($"\nSelf-tests: {cases.Count - failed}/{cases.Count} passed; {failed} failed.");
-Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E/Step16/Step17/Step18/Step19/Step20 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
+Console.WriteLine("These are parser/scope/worker-diff/Solr-plan/Step9/Step10A/Step10B/Step11/Step12/Step14A/Step14B/Step14C/Step14D/Step14E/Step16/Step17/Step18/Step19/Step20/Step21 safety tests only. No MariaDB connection, Solr connection, or SQL was executed.");
 return failed == 0 ? 0 : 1;

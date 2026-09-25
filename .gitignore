@@ -36,3 +36,8 @@ solr-collision-audit-reports/
 baseline-reports/
 recovery-reports/
 pilot-reports/
+
+# Local review reports may contain candidate paths and personal data
+baseline-triage-reports/
+baseline-small-drift-reports/
+baseline-missing-only-reports/

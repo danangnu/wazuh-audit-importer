@@ -1,7 +1,7 @@
-fix(step20): preserve DOCX text during Aspose banner cleanup
+feat(step21): add bounded SmallDrift review and approval
 
-Strip evaluation notices with non-greedy matching so text between
-repeated banners is retained. Add regression coverage for repeated
-notices.
-
-Validation: Restore-And-Preview passed; 148/148 tests passed.
+- Limit Step 21 to candidates 1180003, 1180006, 1180016, and 1180017
+- Revalidate baseline fingerprints and live disk/Solr drift
+- Report proposed index and delete actions for operator review
+- Require explicit acknowledgement before recording MariaDB approval
+- Keep approval separate from Solr reconciliation

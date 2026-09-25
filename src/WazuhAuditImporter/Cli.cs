@@ -14,7 +14,7 @@ public static class Cli
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             { Help(); return 0; }
             var command = args[0];
-            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-collision-audit" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-status" or "baseline-capture" or "baseline-approve" or "baseline-triage" or "baseline-approve-clean" or "baseline-review-small-drift" or "baseline-approve-small-drift" or "baseline-review-step18-small-drift" or "baseline-approve-step18-small-drift" or "baseline-review-step19-small-drift" or "baseline-approve-step19-small-drift" or "baseline-review-step20-missing-only" or "baseline-approve-step20-missing-only" or "recovery-inspect" or "pilot-report" or "pipeline-once" or "pipeline"))
+            if (command is not ("import" or "check-db" or "collect-once" or "collect" or "worker-preflight" or "work-once" or "work" or "solr-readonly" or "solr-collision-audit" or "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-status" or "baseline-capture" or "baseline-approve" or "baseline-triage" or "baseline-approve-clean" or "baseline-review-small-drift" or "baseline-approve-small-drift" or "baseline-review-step18-small-drift" or "baseline-approve-step18-small-drift" or "baseline-review-step19-small-drift" or "baseline-review-step21-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step21-small-drift" or "baseline-review-step20-missing-only" or "baseline-approve-step20-missing-only" or "recovery-inspect" or "pilot-report" or "pipeline-once" or "pipeline"))
                 throw new FormatException("Unknown command. Run help for supported commands and controlled SmallDrift review and approval.");
             string? file = null, config = null, username = null, indexerUser = null, workerRoot = null, stateDir = null, reportDir = null, candidateIdsCsv = null, candidateId = null;
             string? baselineSha256 = null, reviewer = null, approvalNote = null;
@@ -39,12 +39,12 @@ public static class Cli
                 if (!seen.Add(option)) throw new FormatException("Repeated option: " + option);
                 if (option == "--apply")
                 {
-                    if (command is not ("import" or "solr-execute" or "baseline-approve" or "baseline-approve-clean" or "baseline-approve-small-drift" or "baseline-approve-step18-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step20-missing-only")) throw new FormatException("--apply is only valid with import, solr-execute or a controlled baseline approval.");
+                    if (command is not ("import" or "solr-execute" or "baseline-approve" or "baseline-approve-clean" or "baseline-approve-small-drift" or "baseline-approve-step18-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step21-small-drift" or "baseline-approve-step20-missing-only")) throw new FormatException("--apply is only valid with import, solr-execute or a controlled baseline approval.");
                     apply = true;
                 }
                 else if (option == "--ack-small-drift")
                 {
-                    if (command is not ("baseline-approve-small-drift" or "baseline-approve-step18-small-drift" or "baseline-approve-step19-small-drift")) throw new FormatException("--ack-small-drift is only valid with a controlled SmallDrift approval.");
+                    if (command is not ("baseline-approve-small-drift" or "baseline-approve-step18-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step21-small-drift")) throw new FormatException("--ack-small-drift is only valid with a controlled SmallDrift approval.");
                     acknowledgeSmallDrift = true;
                 }
                 else if (option == "--ack-missing-only")
@@ -87,7 +87,7 @@ public static class Cli
                 }
                 else if (option == "--candidate-id")
                 {
-                    if (command is not ("solr-plan-actions" or "solr-build-payloads" or "baseline-capture" or "baseline-approve" or "baseline-triage" or "baseline-approve-clean" or "baseline-review-small-drift" or "baseline-approve-small-drift" or "baseline-review-step18-small-drift" or "baseline-approve-step18-small-drift" or "baseline-review-step19-small-drift" or "baseline-approve-step19-small-drift" or "baseline-review-step20-missing-only" or "baseline-approve-step20-missing-only" or "recovery-inspect"))
+                    if (command is not ("solr-plan-actions" or "solr-build-payloads" or "baseline-capture" or "baseline-approve" or "baseline-triage" or "baseline-approve-clean" or "baseline-review-small-drift" or "baseline-approve-small-drift" or "baseline-review-step18-small-drift" or "baseline-approve-step18-small-drift" or "baseline-review-step19-small-drift" or "baseline-review-step21-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step21-small-drift" or "baseline-review-step20-missing-only" or "baseline-approve-step20-missing-only" or "recovery-inspect"))
                         throw new FormatException("--candidate-id is only valid with candidate-scoped planning, baseline review/approval, or recovery inspection.");
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
                         throw new FormatException("--candidate-id requires a candidate ID value.");
@@ -95,21 +95,21 @@ public static class Cli
                 }
                 else if (option == "--baseline-sha256")
                 {
-                    if (command is not ("baseline-approve" or "baseline-approve-clean" or "baseline-approve-small-drift" or "baseline-approve-step18-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step20-missing-only")) throw new FormatException("--baseline-sha256 is only valid with baseline approval commands.");
+                    if (command is not ("baseline-approve" or "baseline-approve-clean" or "baseline-approve-small-drift" or "baseline-approve-step18-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step21-small-drift" or "baseline-approve-step20-missing-only")) throw new FormatException("--baseline-sha256 is only valid with baseline approval commands.");
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
                         throw new FormatException("--baseline-sha256 requires a 64-character SHA-256 value.");
                     baselineSha256 = args[i++];
                 }
                 else if (option == "--reviewer")
                 {
-                    if (command is not ("baseline-approve" or "baseline-approve-clean" or "baseline-approve-small-drift" or "baseline-approve-step18-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step20-missing-only")) throw new FormatException("--reviewer is only valid with baseline approval commands.");
+                    if (command is not ("baseline-approve" or "baseline-approve-clean" or "baseline-approve-small-drift" or "baseline-approve-step18-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step21-small-drift" or "baseline-approve-step20-missing-only")) throw new FormatException("--reviewer is only valid with baseline approval commands.");
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
                         throw new FormatException("--reviewer requires a value.");
                     reviewer = args[i++];
                 }
                 else if (option == "--approval-note")
                 {
-                    if (command is not ("baseline-approve" or "baseline-approve-clean" or "baseline-approve-small-drift" or "baseline-approve-step18-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step20-missing-only")) throw new FormatException("--approval-note is only valid with baseline approval commands.");
+                    if (command is not ("baseline-approve" or "baseline-approve-clean" or "baseline-approve-small-drift" or "baseline-approve-step18-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step21-small-drift" or "baseline-approve-step20-missing-only")) throw new FormatException("--approval-note is only valid with baseline approval commands.");
                     if (i == args.Length || args[i].StartsWith("--", StringComparison.Ordinal))
                         throw new FormatException("--approval-note requires a value.");
                     approvalNote = args[i++];
@@ -160,6 +160,10 @@ public static class Cli
                 "baseline-approve-step19-small-drift" => apply
                     ? "Step 19 reviewed SmallDrift baseline approval. Records approval in MariaDB only; no Solr writes.\n"
                     : "Step 19 reviewed SmallDrift approval preview. No status or Solr writes.\n",
+                "baseline-review-step21-small-drift" => "Step 21 controlled four-candidate SmallDrift review. Read/report only; no approvals or Solr writes.\n",
+                "baseline-approve-step21-small-drift" => apply
+                    ? "Step 21 reviewed bounded SmallDrift approval. Records baseline approval in MariaDB only; no Solr writes.\n"
+                    : "Step 21 bounded SmallDrift approval preview. No status or Solr writes.\n",
                 "baseline-review-step20-missing-only" => "Step 20 controlled missing-only review of candidate 1180019. Read/report only; no approvals or Solr writes.\n",
                 "baseline-approve-step20-missing-only" => apply
                     ? "Step 20 reviewed missing-only baseline approval. Records approval in MariaDB only; no Solr writes.\n"
@@ -226,14 +230,20 @@ public static class Cli
                 return SolrCollisionAudit.Run(settings, workerRoot, reportDir, candidateLimit, maxIdLookups, explicitIds);
             }
 
-            if ((command is "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-capture" or "baseline-approve" or "baseline-triage" or "baseline-approve-clean" or "baseline-review-small-drift" or "baseline-approve-small-drift" or "baseline-review-step18-small-drift" or "baseline-approve-step18-small-drift" or "baseline-review-step19-small-drift" or "baseline-approve-step19-small-drift" or "baseline-review-step20-missing-only" or "baseline-approve-step20-missing-only" or "recovery-inspect" or "pilot-report") && string.IsNullOrWhiteSpace(workerRoot))
+            if ((command is "solr-plan-actions" or "solr-build-payloads" or "solr-execute" or "baseline-capture" or "baseline-approve" or "baseline-triage" or "baseline-approve-clean" or "baseline-review-small-drift" or "baseline-approve-small-drift" or "baseline-review-step18-small-drift" or "baseline-approve-step18-small-drift" or "baseline-review-step19-small-drift" or "baseline-review-step21-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step21-small-drift" or "baseline-review-step20-missing-only" or "baseline-approve-step20-missing-only" or "recovery-inspect" or "pilot-report") && string.IsNullOrWhiteSpace(workerRoot))
                 throw new FormatException($"{command} requires --worker-root <accessible FLOSVR01 candidate root>.");
             if (command == "solr-execute" && mutationId is null)
                 throw new FormatException("solr-execute requires --mutation-id <positive integer>.");
-            if (command is "baseline-approve" or "baseline-approve-clean" or "baseline-approve-small-drift" or "baseline-approve-step18-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step20-missing-only")
+            if (command is "baseline-approve" or "baseline-approve-clean" or "baseline-approve-small-drift" or "baseline-approve-step18-small-drift" or "baseline-approve-step19-small-drift" or "baseline-approve-step21-small-drift" or "baseline-approve-step20-missing-only")
             {
                 if (string.IsNullOrWhiteSpace(candidateId)) throw new FormatException($"{command} requires --candidate-id <id>.");
                 if (string.IsNullOrWhiteSpace(baselineSha256)) throw new FormatException($"{command} requires --baseline-sha256 <sha256>.");
+            }
+
+            if (command is "baseline-review-step21-small-drift" or "baseline-approve-step21-small-drift")
+            {
+                if (candidateId is not null) Step21SmallDriftPolicy.RequireExpansionCandidate(candidateId);
+                Step21SmallDriftPolicy.RequireAcknowledgement(acknowledgeSmallDrift, apply);
             }
 
             if ((command is "work-once" or "work" or "pipeline-once" or "pipeline") && string.IsNullOrWhiteSpace(workerRoot))
@@ -353,6 +363,14 @@ public static class Cli
             {
                 reviewer ??= Environment.UserDomainName + "\\" + Environment.UserName;
                 _ = Step19SmallDriftService.Approve(settings, connection, workerRoot!, candidateId!, baselineSha256!, reviewer, approvalNote, acknowledgeSmallDrift, apply);
+                return 0;
+            }
+            if (command == "baseline-review-step21-small-drift")
+                return Step21SmallDriftService.Review(settings, connection, workerRoot!, reportDir, candidateId);
+            if (command == "baseline-approve-step21-small-drift")
+            {
+                reviewer ??= Environment.UserDomainName + "\\" + Environment.UserName;
+                _ = Step21SmallDriftService.Approve(settings, connection, workerRoot!, candidateId!, baselineSha256!, reviewer, approvalNote, acknowledgeSmallDrift, apply);
                 return 0;
             }
             if (command == "baseline-review-step20-missing-only")
@@ -594,6 +612,11 @@ public static class Cli
           baseline-approve-step19-small-drift --candidate-id <id> Step 19: individual reviewed baseline enrollment only.
                                       --baseline-sha256 <sha> --worker-root <root>
                                       [--reviewer <name>] [--approval-note <text>] [--ack-small-drift] [--apply]
+          baseline-review-step21-small-drift --worker-root <root> Step 21: read-only exact review of 1180003,1180006,1180016,1180017.
+            [--candidate-id <id>] [--report-dir <directory>]
+          baseline-approve-step21-small-drift --candidate-id <id> Step 21: individual bounded SmallDrift enrollment.
+            --baseline-sha256 <sha256> --worker-root <root> [--ack-small-drift --apply]
+            Requires exact candidate counts, supported extractors, unique scoped paths/IDs and unchanged fingerprint.
           baseline-review-step20-missing-only --worker-root <root> Step 20: read-only review for 1180019 only.
                                       [--candidate-id <id>] [--report-dir <dir>]
           baseline-approve-step20-missing-only --candidate-id 1180019 Step 20: reviewed missing-only enrollment.
